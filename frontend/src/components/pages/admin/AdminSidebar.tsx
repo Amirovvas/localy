@@ -1,5 +1,5 @@
 "use client";
-import { Building2, Flag, LayoutDashboard, LogOut, Users } from "lucide-react";
+import { Building2, Flag, LayoutDashboard, LogOut, Users, X } from "lucide-react";
 import css from "./adminSidebar.module.css";
 import { LogoMark } from "@/components/layout/Logo";
 import { Avatar } from "@/components/layout/Avatar";
@@ -11,6 +11,8 @@ export type AdminSection = "overview" | "users" | "communities" | "complaints";
 interface IProps {
   section: AdminSection;
   onSelect: (section: AdminSection) => void;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
 const MANAGEMENT_ITEMS: { id: AdminSection; label: string; icon: typeof Users }[] = [
@@ -19,18 +21,21 @@ const MANAGEMENT_ITEMS: { id: AdminSection; label: string; icon: typeof Users }[
   { id: "complaints", label: "Жалобы", icon: Flag },
 ];
 
-const AdminSidebar = ({ section, onSelect }: IProps) => {
+const AdminSidebar = ({ section, onSelect, isOpen, onClose }: IProps) => {
   const { data: profile } = useProfile();
   const logout = useLogout();
 
   return (
-    <aside className={css.sidebar}>
+    <aside className={css.sidebar} data-open={isOpen}>
       <div className={css.header}>
         <LogoMark size={16} />
         <div className={css.brandBlock}>
           <span className={css.brand}>Localy</span>
           <span className={css.brandTag}>Admin</span>
         </div>
+        <button type="button" className={css.closeBtn} onClick={onClose} aria-label="Закрыть меню">
+          <X size={18} />
+        </button>
       </div>
 
       <nav className={css.nav}>

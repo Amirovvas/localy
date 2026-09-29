@@ -209,6 +209,18 @@ pool.connect().then(async () => {
     )
   `);
 
+  // "очистить чат у себя": для каждого (пользователь, комната) запоминаем
+  // момент очистки — при загрузке сообщений всё, что было до него, этому
+  // пользователю не отдаём. У остальных участников комнаты ничего не меняется
+  await pool.query(`
+    create table if not exists message_clears (
+      user_id integer not null references users(id) on delete cascade,
+      room_id integer not null references rooms(id) on delete cascade,
+      cleared_at timestamptz not null default now(),
+      primary key (user_id, room_id)
+    )
+  `);
+
   // "timestamp without time zone" хранит наивное значение: при записи оно
   // молча приводится к wall-clock текущей сессии (у нас UTC), а вот
   // node-postgres при ЧТЕНИИ такой колонки интерпретирует её как локальное

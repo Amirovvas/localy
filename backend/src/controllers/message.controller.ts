@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import {
+  clearRoomMessagesService,
   createMessageService,
   deleteMessageService,
   listMessagesService,
@@ -46,6 +47,19 @@ export const deleteMessageController = async (
     const userId = (req as any).user.id;
     await deleteMessageService(Number(req.params.id), userId);
     res.status(200).json({ message: "message deleted" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearMessagesController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const roomId = Number(req.query.roomId);
+    if (!roomId) throw apiErrors.badRequest("roomId is required");
+
+    await clearRoomMessagesService(roomId, userId);
+    res.status(200).json({ message: "chat cleared" });
   } catch (error) {
     next(error);
   }

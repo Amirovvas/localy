@@ -11,6 +11,68 @@
   min-width: 0;
 }
 
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+
+  background: rgba(17, 24, 39, 0.35);
+}
+
+@media (min-width: 881px) {
+  .scrim {
+    display: none;
+  }
+}
+
+.mobileTopbar {
+  display: none;
+
+  align-items: center;
+  gap: 10px;
+
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 16px;
+
+  border-bottom: 1px solid var(--loc-border);
+  background: var(--loc-surface);
+}
+
+.menuBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 32px;
+  height: 32px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.menuBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+.mobileBrand {
+  color: var(--loc-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 880px) {
+  .mobileTopbar {
+    display: flex;
+  }
+}
+
 .pageBody {
   max-width: 1240px;
 

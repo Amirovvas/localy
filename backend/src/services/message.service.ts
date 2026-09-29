@@ -37,7 +37,16 @@ export const listMessagesService = async (
   before?: string,
 ) => {
   const params: any[] = [roomId, userId];
-  let query = `${selectMessage("$2")} where m.room_id = $1`;
+  // сообщения, очищенные этим пользователем у себя, не отдаём — у остальных
+  // участников комнаты они остаются видны как обычно
+  let query = `
+    ${selectMessage("$2")}
+    where m.room_id = $1
+      and m.created_at > coalesce(
+        (select cleared_at from message_clears where user_id = $2 and room_id = $1),
+        '-infinity'
+      )
+  `;
 
   if (before) {
     params.push(before);
@@ -50,6 +59,17 @@ export const listMessagesService = async (
   const result = await pool.query(query, params);
   // отдаём хронологически (старые -> новые), как отображается в чате
   return result.rows.reverse();
+};
+
+export const clearRoomMessagesService = async (roomId: number, userId: number) => {
+  await pool.query(
+    `
+    insert into message_clears (user_id, room_id, cleared_at)
+    values ($1, $2, now())
+    on conflict (user_id, room_id) do update set cleared_at = now()
+    `,
+    [userId, roomId],
+  );
 };
 
 export const createMessageService = async (body: ICreateBody) => {

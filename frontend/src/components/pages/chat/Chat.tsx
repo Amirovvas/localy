@@ -10,6 +10,7 @@ import { useProfile } from "@/hooks/auth/useProfile";
 import { useGetMyCommunities } from "@/hooks/communities/useGetMyCommunities";
 import { useGetCommunity } from "@/hooks/communities/useGetCommunity";
 import { useLeaveCommunity } from "@/hooks/communities/useLeaveCommunity";
+import { useClearChat } from "@/hooks/messages/useClearChat";
 
 const Chat = () => {
   const { data: profile } = useProfile();
@@ -25,8 +26,10 @@ const Chat = () => {
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isInfoOpen, setInfoOpen] = useState(false);
   const [isLeaveOpen, setLeaveOpen] = useState(false);
+  const [isClearOpen, setClearOpen] = useState(false);
   const [isJoinOpen, setJoinOpen] = useState(false);
   const leaveCommunity = useLeaveCommunity();
+  const clearChat = useClearChat();
 
   // выбираем первое сообщество, как только пришёл список "моих"
   useEffect(() => {
@@ -80,6 +83,14 @@ const Chat = () => {
         setLeaveOpen(false);
         setInfoOpen(false);
       },
+    });
+  };
+
+  const handleClearChat = () => {
+    if (roomId === null) return;
+
+    clearChat.mutate(roomId, {
+      onSuccess: () => setClearOpen(false),
     });
   };
 
@@ -157,6 +168,7 @@ const Chat = () => {
         isOpen={isInfoOpen}
         onClose={() => setInfoOpen(false)}
         onLeave={() => setLeaveOpen(true)}
+        onClearChat={() => setClearOpen(true)}
       />
 
       {isLeaveOpen && (
@@ -166,6 +178,16 @@ const Chat = () => {
           confirmLabel={leaveCommunity.isPending ? "Выходим..." : "Покинуть"}
           onConfirm={handleLeave}
           onCancel={() => setLeaveOpen(false)}
+        />
+      )}
+
+      {isClearOpen && (
+        <ConfirmDialog
+          title="Очистить чат?"
+          message={`История комнаты «${room.name}» исчезнет только у вас. Остальные участники продолжат видеть все сообщения как раньше. Отменить это действие нельзя.`}
+          confirmLabel={clearChat.isPending ? "Очищаем..." : "Очистить"}
+          onConfirm={handleClearChat}
+          onCancel={() => setClearOpen(false)}
         />
       )}
     </div>

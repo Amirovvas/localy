@@ -355,3 +355,9 @@
 .leaveBtn + .privacyNote {
   margin-top: 12px;
 }
+
+/* когда кнопок две (очистить чат + покинуть), auto-margin забирает всё
+   свободное место только у первой — второй нужен свой небольшой отступ */
+.leaveBtn + .leaveBtn {
+  margin-top: 8px;
+}

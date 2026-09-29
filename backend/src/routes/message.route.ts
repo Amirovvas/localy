@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  clearMessagesController,
   createMessageController,
   deleteMessageController,
   getMessagesController,
@@ -16,6 +17,7 @@ const router = Router();
 
 router.get("/", authMiddleware, getMessagesController);
 router.post("/", authMiddleware, validateSchema(createMessageSchema), createMessageController);
+router.post("/clear", authMiddleware, clearMessagesController);
 router.delete("/:id", authMiddleware, deleteMessageController);
 router.post(
   "/:id/reactions",

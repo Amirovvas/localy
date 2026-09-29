@@ -1,5 +1,5 @@
 "use client";
-import { Lock, LogOut, MapPin, Users, X } from "lucide-react";
+import { Eraser, Lock, LogOut, MapPin, Users, X } from "lucide-react";
 import css from "./infoPanel.module.css";
 import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import type { ChatCommunityDetail, ChatEvent } from "@/lib/chat";
@@ -10,11 +10,12 @@ interface IProps {
   isOpen: boolean;
   onClose: () => void;
   onLeave: () => void;
+  onClearChat: () => void;
 }
 
 const fmt = (value: number) => value.toLocaleString("ru-RU");
 
-const InfoPanel = ({ community, events, isOpen, onClose, onLeave }: IProps) => {
+const InfoPanel = ({ community, events, isOpen, onClose, onLeave, onClearChat }: IProps) => {
   return (
     <aside className={css.info} data-open={isOpen}>
       <div className={css.header}>
@@ -73,6 +74,11 @@ const InfoPanel = ({ community, events, isOpen, onClose, onLeave }: IProps) => {
           )}
         </div>
       </div>
+
+      <button type="button" className={css.leaveBtn} onClick={onClearChat}>
+        <Eraser size={14} />
+        Очистить чат
+      </button>
 
       <button type="button" className={css.leaveBtn} onClick={onLeave}>
         <LogOut size={14} />

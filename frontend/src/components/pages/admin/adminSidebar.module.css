@@ -13,6 +13,24 @@
   border-right: 1px solid var(--loc-border);
 }
 
+/* на узких экранах сайдбар — выезжающая панель поверх контента, открывается
+   кнопкой-гамбургером в шапке (как в основном чате) */
+@media (max-width: 880px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar[data-open="true"] {
+    transform: translateX(0);
+    box-shadow: 12px 0 32px rgba(17, 24, 39, 0.14);
+  }
+}
+
 /* =========================
    HEADER
 ========================= */
@@ -30,7 +48,38 @@
   border-bottom: 1px solid var(--loc-border);
 }
 
+.closeBtn {
+  display: none;
+
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 30px;
+  height: 30px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+@media (max-width: 880px) {
+  .closeBtn {
+    display: flex;
+  }
+}
+
 .brandBlock {
+  flex: 1;
+
   display: flex;
   align-items: baseline;
   gap: 6px;

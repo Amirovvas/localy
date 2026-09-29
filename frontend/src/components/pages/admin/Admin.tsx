@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { ShieldAlert } from "lucide-react";
+import { Menu, ShieldAlert } from "lucide-react";
 import css from "./admin.module.css";
 import AdminSidebar, { type AdminSection } from "./AdminSidebar";
 import CommunityOverview from "./sections/CommunityOverview";
@@ -12,7 +12,13 @@ import { useProfile } from "@/hooks/auth/useProfile";
 
 const Admin = () => {
   const [section, setSection] = useState<AdminSection>("overview");
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   const { data: profile, isLoading } = useProfile();
+
+  const handleSelect = (next: AdminSection) => {
+    setSection(next);
+    setSidebarOpen(false);
+  };
 
   // все данные в разделах и так защищены на бэкенде (403 без роли админа) —
   // это просто не даёт обычному пользователю листать пустые/ошибочные экраны
@@ -37,9 +43,28 @@ const Admin = () => {
 
   return (
     <div className={css.shell}>
-      <AdminSidebar section={section} onSelect={setSection} />
+      {isSidebarOpen && <div className={css.scrim} onClick={() => setSidebarOpen(false)} />}
+
+      <AdminSidebar
+        section={section}
+        onSelect={handleSelect}
+        isOpen={isSidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       <main className={css.content}>
+        <header className={css.mobileTopbar}>
+          <button
+            type="button"
+            className={css.menuBtn}
+            onClick={() => setSidebarOpen(true)}
+            aria-label="Открыть меню"
+          >
+            <Menu size={18} />
+          </button>
+          <span className={css.mobileBrand}>Localy Admin</span>
+        </header>
+
         <div className={css.pageBody}>
           {section === "overview" && <CommunityOverview />}
           {section === "users" && <UsersSection />}
