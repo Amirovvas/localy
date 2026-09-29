@@ -15,6 +15,12 @@ import reportRouter from "./routes/report.route";
 const createApi = () => {
   const app = express();
 
+  // это API с авторизацией, а не статика — ответы не должны кэшироваться.
+  // Иначе Express сам генерирует ETag, и браузер на повторный запрос
+  // (например /auth/profile после логина) иногда получает 304 без тела,
+  // из-за чего фронтенд не может прочитать данные
+  app.disable("etag");
+
   app.use(
     cors({
       origin: process.env.FRONTEND_URL!,
