@@ -1,0 +1,63 @@
+.shell {
+  position: relative;
+
+  display: flex;
+
+  width: 100%;
+  height: 100dvh;
+
+  background: var(--loc-bg);
+
+  overflow: hidden;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+
+  background: rgba(17, 24, 39, 0.35);
+}
+
+@media (min-width: 1100px) {
+  .scrim {
+    display: none;
+  }
+}
+
+.stateScreen {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100dvh;
+
+  color: var(--loc-text-tertiary);
+  font-size: 14px;
+  text-align: center;
+
+  background: var(--loc-bg);
+}
+
+.stateBtn {
+  padding: 10px 18px;
+
+  border: none;
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease;
+}
+
+.stateBtn:hover {
+  background: var(--loc-accent-hover);
+}

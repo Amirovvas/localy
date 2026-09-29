@@ -1,0 +1,289 @@
+.container {
+  min-height: 100dvh;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 24px;
+
+  background: var(--loc-bg);
+}
+
+/* =========================
+   BRAND
+========================= */
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  margin-bottom: 24px;
+
+  color: var(--loc-text);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* =========================
+   MAIN CARD
+========================= */
+
+.mainContainer {
+  width: 100%;
+  max-width: 400px;
+}
+
+.formSection {
+  padding: 36px;
+
+  background: var(--loc-surface);
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-lg);
+
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.03),
+    0 15px 35px rgba(0, 0, 0, 0.06);
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.formSection h1 {
+  margin: 0 0 8px;
+
+  text-align: center;
+
+  color: var(--loc-text);
+
+  font-size: 26px;
+  font-weight: 700;
+
+  letter-spacing: -0.4px;
+}
+
+.formSection > p {
+  margin: 0 0 28px;
+
+  text-align: center;
+
+  color: var(--loc-text-secondary);
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* =========================
+   FORM
+========================= */
+
+.form {
+  display: flex;
+  flex-direction: column;
+
+  gap: 16px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.inputGroup label {
+  color: var(--loc-text);
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.errorText {
+  margin: 0;
+
+  color: var(--loc-danger);
+  font-size: 12px;
+}
+
+.errorBanner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  margin: 0;
+  padding: 10px 12px;
+
+  border-radius: var(--loc-radius-md);
+  background: #fef2f2;
+  color: var(--loc-danger);
+
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.inputWrap {
+  position: relative;
+}
+
+.inputIcon {
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  transform: translateY(-50%);
+
+  color: var(--loc-text-tertiary);
+  pointer-events: none;
+}
+
+.inputWrap input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 12px 13px 12px 38px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+
+  outline: none;
+
+  background: var(--loc-surface);
+  color: var(--loc-text);
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.inputWrap input:hover {
+  border-color: #9ca3af;
+}
+
+.inputWrap input:focus {
+  border-color: var(--loc-accent);
+
+  box-shadow: 0 0 0 3px var(--loc-accent-soft);
+}
+
+.inputWrap input::placeholder {
+  color: var(--loc-text-tertiary);
+}
+
+/* =========================
+   BUTTON
+========================= */
+
+.button {
+  width: 100%;
+
+  margin-top: 4px;
+
+  padding: 12px 16px;
+
+  border: none;
+  border-radius: var(--loc-radius-md);
+
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease;
+}
+
+.button:hover {
+  background: var(--loc-accent-hover);
+}
+
+.button:active {
+  transform: scale(0.98);
+}
+
+/* =========================
+   HINT
+========================= */
+
+.hint {
+  margin: 18px 0 0;
+  padding: 10px 12px;
+
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* =========================
+   LINKS
+========================= */
+
+.loginText {
+  margin-top: 14px !important;
+  margin-bottom: 0 !important;
+
+  text-align: center;
+
+  color: var(--loc-text-secondary);
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.loginText a,
+.linkBtn {
+  color: var(--loc-text);
+
+  font-weight: 600;
+
+  text-decoration: none;
+
+  transition: color 0.2s ease;
+}
+
+.linkBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.loginText a:hover,
+.linkBtn:hover {
+  color: var(--loc-accent);
+  text-decoration: underline;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 500px) {
+  .container {
+    padding: 16px;
+  }
+
+  .formSection {
+    padding: 28px 22px;
+
+    border-radius: var(--loc-radius-md);
+  }
+
+  .formSection h1 {
+    font-size: 23px;
+  }
+}

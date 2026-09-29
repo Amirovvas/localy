@@ -1,0 +1,497 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+
+  width: 272px;
+  flex-shrink: 0;
+
+  height: 100%;
+
+  background: var(--loc-surface);
+  border-right: 1px solid var(--loc-border);
+
+  overflow-y: auto;
+}
+
+@media (max-width: 1099px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+
+    width: 288px;
+
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar[data-open="true"] {
+    transform: translateX(0);
+    box-shadow: 12px 0 32px rgba(17, 24, 39, 0.14);
+  }
+}
+
+/* на широких экранах сайдбар не наплывает поверх чата (как на мобильном), а
+   просто схлопывается до нуля — кнопка-гамбургер в шапке возвращает его назад */
+@media (min-width: 1100px) {
+  .sidebar {
+    transition: width 0.2s ease, opacity 0.2s ease;
+  }
+
+  .sidebar[data-collapsed="true"] {
+    width: 0;
+    min-width: 0;
+    opacity: 0;
+
+    border-right: none;
+    overflow: hidden;
+  }
+}
+
+/* =========================
+   HEADER
+========================= */
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  height: 60px;
+  flex-shrink: 0;
+
+  padding: 0 16px;
+
+  border-bottom: 1px solid var(--loc-border);
+}
+
+.brand {
+  flex: 1;
+
+  color: var(--loc-text);
+
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.closeBtn {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 30px;
+  height: 30px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+/* =========================
+   COMMUNITY SWITCHER
+========================= */
+
+.switcherWrap {
+  position: relative;
+
+  padding: 12px 12px 0;
+}
+
+.switcherBtn {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 10px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+
+  cursor: pointer;
+
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.switcherBtn:hover {
+  border-color: #d1d5db;
+  background: var(--loc-surface-soft);
+}
+
+.switcherIcon,
+.switcherItemIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 30px;
+  height: 30px;
+
+  border-radius: var(--loc-radius-sm);
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+}
+
+.switcherItemIcon {
+  width: 28px;
+  height: 28px;
+}
+
+.switcherInfo {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  text-align: left;
+}
+
+.switcherName {
+  color: var(--loc-text);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switcherMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: var(--loc-text-tertiary);
+
+  font-size: 11px;
+}
+
+.dot,
+.userDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--loc-success);
+  flex-shrink: 0;
+}
+
+.userDot {
+  margin-right: 4px;
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--loc-text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.chevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+.switcherMenu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 12px;
+  right: 12px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  padding: 8px;
+
+  background: var(--loc-surface);
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.12);
+}
+
+.switcherLabel {
+  padding: 4px 6px 6px;
+
+  color: var(--loc-text-tertiary);
+
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.switcherItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  padding: 8px 6px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+
+  cursor: pointer;
+  text-align: left;
+}
+
+.switcherItem:hover {
+  background: var(--loc-surface-soft);
+}
+
+.switcherItem[data-active="true"] {
+  background: var(--loc-accent-soft);
+}
+
+.switcherItemBody {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.switcherItemTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.switcherItemName {
+  color: var(--loc-text);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.activeTag {
+  padding: 1px 6px;
+
+  border-radius: 999px;
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.switcherItemMeta {
+  color: var(--loc-text-tertiary);
+  font-size: 11px;
+}
+
+.joinBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-top: 4px;
+  padding: 8px 6px;
+
+  border: none;
+  border-top: 1px solid var(--loc-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--loc-accent);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.joinBtn:hover {
+  color: var(--loc-accent-hover);
+}
+
+/* =========================
+   SECTIONS
+========================= */
+
+.section {
+  padding: 14px 12px 4px;
+}
+
+.sectionLabel {
+  display: block;
+
+  padding: 0 6px 6px;
+
+  color: var(--loc-text-tertiary);
+
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.emptyHint {
+  padding: 6px;
+  color: var(--loc-text-tertiary);
+  font-size: 12px;
+}
+
+/* =========================
+   ROOMS
+========================= */
+
+.roomBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  height: 34px;
+  padding: 0 6px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  font-size: 13px;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.roomBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+.roomBtn[data-active="true"] {
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+  font-weight: 600;
+}
+
+.roomIcon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.roomBtn[data-active="true"] .roomIcon {
+  opacity: 1;
+}
+
+.roomName {
+  flex: 1;
+  min-width: 0;
+
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+
+  border-radius: 999px;
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* =========================
+   FOOTER / IDENTITY
+========================= */
+
+.footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--loc-border);
+}
+
+.userCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.userInfo {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.userName {
+  color: var(--loc-text);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userMeta {
+  display: flex;
+  align-items: center;
+
+  color: var(--loc-success);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.settingsBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 30px;
+  height: 30px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.settingsBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}

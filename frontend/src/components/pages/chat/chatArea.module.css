@@ -1,0 +1,1232 @@
+.chatArea {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+
+  height: 100%;
+  background: var(--loc-bg);
+}
+
+/* =========================
+   TOPBAR
+========================= */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  height: 64px;
+  flex-shrink: 0;
+  padding: 0 20px;
+
+  background: var(--loc-surface);
+  border-bottom: 1px solid var(--loc-border);
+}
+
+.menuBtn,
+.infoBtn {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 32px;
+  height: 32px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+/* на широких экранах панель информации по умолчанию не нужна — прячем её
+   кнопку там, а на узких она открывает InfoPanel поверх контента */
+.infoBtn {
+  display: none;
+}
+
+.menuBtn:hover,
+.infoBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+@media (max-width: 699px) {
+  .infoBtn {
+    display: flex;
+  }
+}
+
+.communityIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 34px;
+  height: 34px;
+
+  border-radius: var(--loc-radius-sm);
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+}
+
+.communityInfo {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.communityName {
+  color: var(--loc-text);
+  font-size: 15px;
+  font-weight: 700;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.communityMeta {
+  color: var(--loc-text-tertiary);
+  font-size: 12px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 760px) {
+  .communityMeta {
+    display: none;
+  }
+}
+
+.topbarActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.summarizeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  height: 34px;
+  padding: 0 14px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  color: var(--loc-accent);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.summarizeBtn:hover {
+  background: var(--loc-accent-soft);
+  border-color: var(--loc-accent);
+}
+
+/* =========================
+   ROOM HEAD
+========================= */
+
+.roomHead {
+  padding: 14px 20px 12px;
+
+  background: var(--loc-surface);
+  border-bottom: 1px solid var(--loc-border);
+}
+
+.roomTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  margin: 0 0 2px;
+
+  color: var(--loc-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.roomDescription {
+  margin: 0;
+
+  color: var(--loc-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* =========================
+   AI SUMMARY BANNER
+========================= */
+
+.summaryBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  padding: 12px 20px;
+
+  background: var(--loc-accent-soft);
+  border-bottom: 1px solid var(--loc-border);
+}
+
+.summaryIcon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--loc-accent);
+}
+
+.summaryBanner p {
+  flex: 1;
+  margin: 0;
+
+  color: var(--loc-accent);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.summaryClose {
+  flex-shrink: 0;
+
+  border: none;
+  background: transparent;
+  color: var(--loc-accent);
+
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+
+  cursor: pointer;
+}
+
+/* =========================
+   MESSAGES
+========================= */
+
+.messages {
+  flex: 1;
+  min-height: 0;
+
+  overflow-y: auto;
+
+  padding: 16px 20px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.emptyState {
+  margin: auto;
+
+  color: var(--loc-text-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.message {
+  position: relative;
+
+  display: flex;
+  gap: 12px;
+
+  padding: 6px 8px;
+  margin: -6px -8px;
+
+  border-radius: var(--loc-radius-md);
+}
+
+.message:hover {
+  background: var(--loc-surface-soft);
+}
+
+.message.announcement {
+  background: var(--loc-accent-soft);
+  border: 1px solid #e0e7ff;
+}
+
+/* свои сообщения — справа: строка разворачивается, аватар уходит на правый
+   край, а body перестаёт растягиваться на всю ширину и жмётся к нему */
+.message.own {
+  flex-direction: row-reverse;
+}
+
+.message.own .body {
+  flex: 0 1 auto;
+  max-width: 72%;
+}
+
+@media (max-width: 640px) {
+  .message.own .body {
+    max-width: 85%;
+  }
+}
+
+/* кнопки при наведении обычно прижаты к аватару справа — у своих сообщений
+   аватар теперь слева от них, поэтому переносим панель на другую сторону */
+.message.own .hoverActions {
+  right: auto;
+  left: 8px;
+}
+
+/* пикер реакций обычно растёт влево от правого края панели — у своих
+   сообщений панель теперь слева, так что растим его вправо, иначе он
+   уезжает за левый край экрана */
+.message.own .reactionPicker {
+  right: auto;
+  left: 0;
+}
+
+.avatar {
+  margin-top: 1px;
+}
+
+.body {
+  min-width: 0;
+  flex: 1;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.author {
+  color: var(--loc-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.time {
+  color: var(--loc-text-tertiary);
+  font-size: 11px;
+}
+
+.announceTag {
+  padding: 1px 7px;
+
+  border-radius: 999px;
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.text {
+  margin: 3px 0 0;
+
+  color: var(--loc-text);
+  font-size: 14px;
+  line-height: 1.5;
+
+  word-break: break-word;
+}
+
+.attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: 4px 0;
+  padding: 10px 12px;
+
+  border: 1px dashed var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  color: var(--loc-text-secondary);
+
+  font-size: 12px;
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  margin-top: 8px;
+}
+
+.reaction {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  padding: 3px 8px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: 999px;
+  background: var(--loc-surface);
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.reaction:hover {
+  border-color: var(--loc-accent);
+  background: var(--loc-accent-soft);
+}
+
+.hoverActions {
+  position: absolute;
+  top: -4px;
+  right: 8px;
+
+  display: flex;
+  align-items: center;
+  gap: 2px;
+
+  padding: 3px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-sm);
+  background: var(--loc-surface);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+
+  opacity: 0;
+  pointer-events: none;
+
+  transition: opacity 0.1s ease;
+}
+
+.message:hover .hoverActions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hoverBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 26px;
+  height: 26px;
+
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.hoverBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+/* =========================
+   INPUT BAR
+========================= */
+
+.inputBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  flex-shrink: 0;
+  padding: 14px 20px;
+
+  background: var(--loc-surface);
+  border-top: 1px solid var(--loc-border);
+}
+
+.attachBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 40px;
+  height: 40px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.attachBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+.inputWrap {
+  position: relative;
+
+  flex: 1;
+  min-width: 0;
+}
+
+.messageInput {
+  width: 100%;
+  box-sizing: border-box;
+
+  height: 40px;
+  padding: 0 40px 0 14px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  outline: none;
+
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+
+  font-size: 13px;
+
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.messageInput::placeholder {
+  color: var(--loc-text-tertiary);
+}
+
+.messageInput:focus {
+  border-color: var(--loc-accent);
+  background: var(--loc-surface);
+}
+
+.emojiBtn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 26px;
+  height: 26px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-tertiary);
+
+  cursor: pointer;
+}
+
+.emojiBtn:hover {
+  background: var(--loc-border);
+  color: var(--loc-text);
+}
+
+.sendBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 40px;
+  height: 40px;
+
+  border: none;
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  cursor: pointer;
+
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.sendBtn:hover {
+  background: var(--loc-accent-hover);
+}
+
+.sendBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* =========================
+   REPORT MODAL
+========================= */
+
+.modalScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(17, 24, 39, 0.45);
+}
+
+.modal {
+  width: 100%;
+  max-width: 340px;
+
+  padding: 20px;
+
+  background: var(--loc-surface);
+  border-radius: var(--loc-radius-lg);
+  box-shadow: 0 20px 48px rgba(17, 24, 39, 0.2);
+}
+
+.modalTitle {
+  margin: 0 0 6px;
+
+  color: var(--loc-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.modalText {
+  margin: 0 0 14px;
+
+  color: var(--loc-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.reasonList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  margin-bottom: 14px;
+}
+
+.reasonBtn {
+  padding: 9px 12px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  color: var(--loc-text);
+
+  font-size: 13px;
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.reasonBtn:hover {
+  border-color: var(--loc-danger);
+  background: #fef2f2;
+  color: var(--loc-danger);
+}
+
+.modalCancel {
+  width: 100%;
+
+  padding: 10px;
+
+  border: none;
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface-soft);
+  color: var(--loc-text-secondary);
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.modalCancel:hover {
+  background: var(--loc-border);
+  color: var(--loc-text);
+}
+
+/* =========================
+   REPLY
+========================= */
+
+.replyQuote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  max-width: 100%;
+  margin: 4px 0 2px;
+  padding: 4px 10px;
+
+  border: none;
+  border-left: 3px solid var(--loc-accent);
+  border-radius: 0 var(--loc-radius-sm) var(--loc-radius-sm) 0;
+  background: var(--loc-accent-soft);
+
+  font-size: 12px;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.replyQuote:hover {
+  background: #e0e7ff;
+}
+
+.replyQuoteIcon {
+  flex-shrink: 0;
+  color: var(--loc-accent);
+}
+
+.replyQuoteAuthor {
+  flex-shrink: 0;
+
+  color: var(--loc-accent);
+  font-weight: 700;
+}
+
+.replyQuoteText {
+  min-width: 0;
+
+  color: var(--loc-text-secondary);
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replyBanner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 20px;
+
+  border-top: 1px solid var(--loc-border);
+  background: var(--loc-accent-soft);
+}
+
+.replyBannerIcon {
+  flex-shrink: 0;
+  color: var(--loc-accent);
+}
+
+.replyBannerBody {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.replyBannerTitle {
+  color: var(--loc-accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.replyBannerText {
+  color: var(--loc-text-secondary);
+  font-size: 12px;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.replyBannerClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 26px;
+  height: 26px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.replyBannerClose:hover {
+  background: rgba(55, 48, 163, 0.12);
+  color: var(--loc-text);
+}
+
+.message.highlighted {
+  background: #fef9c3;
+  transition: background 0.3s ease;
+}
+
+/* =========================
+   CREATE EVENT MODAL
+========================= */
+
+.eventForm {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.eventField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.eventField label {
+  color: var(--loc-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.eventField input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 10px 12px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  outline: none;
+
+  background: var(--loc-surface);
+  color: var(--loc-text);
+
+  font-size: 13.5px;
+  font-family: inherit;
+
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.eventField input::placeholder {
+  color: var(--loc-text-tertiary);
+}
+
+.eventField input:focus {
+  border-color: var(--loc-accent);
+  box-shadow: 0 0 0 3px var(--loc-accent-soft);
+}
+
+.eventActions {
+  display: flex;
+  gap: 10px;
+}
+
+.eventActions .modalCancel {
+  width: auto;
+  flex: 1;
+}
+
+.eventSubmit {
+  flex: 1;
+
+  padding: 10px;
+
+  border: none;
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-accent);
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.eventSubmit:hover {
+  background: var(--loc-accent-hover);
+}
+
+.eventSubmit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================
+   REACTIONS
+========================= */
+
+.reaction.reactionMine {
+  border-color: var(--loc-accent);
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+  font-weight: 600;
+}
+
+.hoverActions.hoverActionsOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.reactionPicker {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+
+  display: flex;
+  gap: 2px;
+
+  padding: 4px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.12);
+}
+
+.reactionPickerBtn {
+  width: 30px;
+  height: 30px;
+
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+
+  font-size: 17px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.reactionPickerBtn:hover {
+  background: var(--loc-surface-soft);
+}
+
+/* =========================
+   EMOJI PANEL (поле ввода)
+========================= */
+
+.emojiBtn.emojiBtnActive {
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+}
+
+.emojiPanel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  z-index: 10;
+
+  max-width: calc(100vw - 32px);
+
+  border-radius: var(--loc-radius-md);
+  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.14);
+}
+
+/* на узких экранах кнопка эмодзи стоит near середины строки ввода — 330px
+   панель, растущая от неё вправо-налево (right: 0), вылезала бы за левый
+   край экрана. На мобильном центрируем её по низу экрана вместо этого */
+@media (max-width: 480px) {
+  .emojiPanel {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: 76px;
+    transform: translateX(-50%);
+  }
+}
+
+/* пока библиотека подгружается — панель уже занимает своё место */
+.emojiLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 330px;
+  max-width: 100%;
+  height: 380px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  color: var(--loc-text-tertiary);
+
+  font-size: 13px;
+}
+
+/* =========================
+   PHOTO ATTACHMENTS
+========================= */
+
+.imageLink {
+  display: inline-block;
+  margin: 4px 0;
+}
+
+.messageImage {
+  display: block;
+  max-width: min(320px, 100%);
+  max-height: 320px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+
+  object-fit: cover;
+  cursor: zoom-in;
+}
+
+.fileInput {
+  display: none;
+}
+
+.attachPreview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  flex-shrink: 0;
+  padding: 8px 20px;
+
+  border-top: 1px solid var(--loc-border);
+  background: var(--loc-surface-soft);
+}
+
+.attachThumb {
+  width: 44px;
+  height: 44px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-sm);
+
+  object-fit: cover;
+}
+
+.attachStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  flex: 1;
+
+  color: var(--loc-text-secondary);
+
+  font-size: 12px;
+}
+
+.attachError {
+  flex: 1;
+
+  color: #b91c1c;
+
+  font-size: 12px;
+}
+
+.spin {
+  animation: attachSpin 0.9s linear infinite;
+}
+
+@keyframes attachSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* =========================
+   TYPING INDICATOR
+========================= */
+
+/* высота зарезервирована всегда, чтобы лента не прыгала при появлении надписи */
+.typingBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 20px;
+
+  color: var(--loc-text-tertiary);
+
+  font-size: 12px;
+}
+
+.typingDots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.typingDots span {
+  width: 4px;
+  height: 4px;
+
+  border-radius: 50%;
+  background: var(--loc-accent);
+
+  animation: typingBounce 1.2s infinite ease-in-out;
+}
+
+.typingDots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typingDots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingBounce {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* =========================
+   REPORT MODAL
+========================= */
+
+.reportQuote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  margin-bottom: 12px;
+  padding: 8px 10px;
+
+  border-left: 3px solid var(--loc-border);
+  border-radius: var(--loc-radius-sm);
+  background: var(--loc-surface-soft);
+}
+
+.reportQuoteAuthor {
+  color: var(--loc-text-secondary);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.reportQuoteText {
+  display: -webkit-box;
+  overflow: hidden;
+
+  color: var(--loc-text-secondary);
+
+  font-size: 12px;
+  line-height: 1.4;
+
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.reasonBtn[data-active="true"] {
+  border-color: var(--loc-danger);
+  background: #fef2f2;
+  color: var(--loc-danger);
+  font-weight: 600;
+}
+
+.reportComment {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  outline: none;
+  resize: vertical;
+
+  background: var(--loc-surface);
+  color: var(--loc-text);
+
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.reportComment:focus {
+  border-color: var(--loc-accent);
+  box-shadow: 0 0 0 3px var(--loc-accent-soft);
+}
+
+.reportError {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+
+  border-radius: var(--loc-radius-sm);
+  background: #fef2f2;
+  color: #b91c1c;
+
+  font-size: 12px;
+}
+
+.reportSubmit {
+  flex: 1;
+
+  padding: 10px;
+
+  border: none;
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-danger);
+  color: #ffffff;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.reportSubmit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* названия категорий в панели эмодзи: библиотека делает каждое слово с
+   заглавной ("Смайлики И Люди") — оставляем как в словаре */
+.emojiPanel :global(.epr-emoji-category-label) {
+  text-transform: none;
+}
+
+/* текст AI-сводки */
+.summaryBody {
+  flex: 1;
+  min-width: 0;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* переносы строк из ответа модели ("- пункт") сохраняем как есть */
+.summaryText {
+  white-space: pre-line;
+}
+
+.summaryMeta {
+  display: block;
+  margin-top: 6px;
+
+  color: var(--loc-text-tertiary);
+  font-size: 11px;
+}

@@ -1,0 +1,68 @@
+.shell {
+  display: flex;
+
+  min-height: 100dvh;
+
+  background: var(--loc-bg);
+}
+
+.content {
+  flex: 1;
+  min-width: 0;
+}
+
+.pageBody {
+  max-width: 1240px;
+
+  padding: 28px 32px 60px;
+}
+
+@media (max-width: 640px) {
+  .pageBody {
+    padding: 20px 16px 40px;
+  }
+}
+
+.denied {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  width: 100%;
+  padding: 60px 20px;
+
+  text-align: center;
+}
+
+.deniedIcon {
+  margin-bottom: 8px;
+  color: var(--loc-danger);
+}
+
+.denied h1 {
+  margin: 0;
+
+  color: var(--loc-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.denied p {
+  margin: 0 0 12px;
+
+  color: var(--loc-text-secondary);
+  font-size: 14px;
+}
+
+.deniedLink {
+  color: var(--loc-accent);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.deniedLink:hover {
+  text-decoration: underline;
+}

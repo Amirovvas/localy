@@ -1,0 +1,193 @@
+.root {
+  position: relative;
+}
+
+.control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+
+  min-height: 44px;
+  box-sizing: border-box;
+
+  padding: 6px 8px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+
+  background: var(--loc-surface);
+
+  cursor: text;
+
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.control[data-open="true"] {
+  border-color: var(--loc-accent);
+  box-shadow: 0 0 0 3px var(--loc-accent-soft);
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  max-width: 100%;
+  padding: 5px 6px 5px 10px;
+
+  border-radius: 999px;
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent);
+
+  font-size: 12px;
+  font-weight: 600;
+
+  line-height: 1.3;
+}
+
+.singleValue {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  flex: 1;
+  min-width: 0;
+  padding: 4px 2px;
+
+  color: var(--loc-text);
+  font-size: 14px;
+}
+
+.chipRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 16px;
+  height: 16px;
+
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: currentColor;
+  opacity: 0.7;
+
+  cursor: pointer;
+}
+
+.chipRemove:hover {
+  opacity: 1;
+  background: rgba(55, 48, 163, 0.12);
+}
+
+.inputWrap {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  flex: 1;
+  min-width: 120px;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 6px;
+
+  color: var(--loc-text-tertiary);
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 6px 6px 6px 26px;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+  color: var(--loc-text);
+
+  font-size: 14px;
+}
+
+.input::placeholder {
+  color: var(--loc-text-tertiary);
+}
+
+.chevron {
+  flex-shrink: 0;
+  margin-left: auto;
+
+  color: var(--loc-text-tertiary);
+  transition: transform 0.15s ease;
+}
+
+.chevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+/* =========================
+   DROPDOWN
+========================= */
+
+.menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+
+  max-height: 240px;
+  overflow-y: auto;
+
+  padding: 6px;
+
+  background: var(--loc-surface);
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+}
+
+.empty {
+  padding: 10px 8px;
+
+  color: var(--loc-text-tertiary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  width: 100%;
+
+  padding: 9px 10px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text);
+
+  font-size: 13px;
+  text-align: left;
+  line-height: 1.4;
+
+  cursor: pointer;
+}
+
+.option:hover {
+  background: var(--loc-surface-soft);
+}
+
+.optionCheck {
+  flex-shrink: 0;
+  color: var(--loc-accent);
+}

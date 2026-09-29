@@ -1,0 +1,26 @@
+.avatar {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  border-radius: 999px;
+  background: var(--loc-surface-soft);
+  border: 1px solid var(--loc-border);
+  color: var(--loc-text-tertiary);
+}
+
+.status {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+
+  width: 9px;
+  height: 9px;
+
+  border-radius: 999px;
+  background: var(--loc-success);
+  border: 2px solid var(--loc-surface);
+}
