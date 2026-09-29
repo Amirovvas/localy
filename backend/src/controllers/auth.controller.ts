@@ -7,6 +7,19 @@ import {
   registerService,
 } from "../services/auth.service";
 
+// фронтенд и бэкенд живут на разных доменах (vercel.app / onrender.com) —
+// для таких "кросс-сайтовых" запросов браузер отправляет cookie обратно на
+// сервер только при sameSite: "none" + secure: true, иначе куку просто не
+// отправит на XHR/fetch-запросы (только на прямые переходы по ссылке), и
+// silent refresh перестаёт работать. Локально (http://localhost) secure-кука
+// не сработает вовсе, поэтому здесь остаётся lax
+const isProd = process.env.NODE_ENV === "production";
+const refreshCookieOptions = {
+  httpOnly: true,
+  sameSite: isProd ? ("none" as const) : ("lax" as const),
+  secure: isProd,
+};
+
 export const registerController = async (
   req: Request<
     {},
@@ -40,10 +53,7 @@ export const loginController = async (
 ) => {
   try {
     const { user, tokens } = await loginService(req.body);
-    res.cookie("refreshToken", tokens.refreshToken, {
-      httpOnly: true,
-      sameSite: "lax",
-    });
+    res.cookie("refreshToken", tokens.refreshToken, refreshCookieOptions);
     res.status(200).json({
       message: "logged in",
       user,
@@ -64,10 +74,7 @@ export const refreshController = async (
     const result = await refreshService(token);
     // refreshService ротирует refresh-токен в БД — новый нужно вернуть клиенту
     // тем же cookie, иначе следующий /refresh получит уже неактуальный токен
-    res.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      sameSite: "lax",
-    });
+    res.cookie("refreshToken", result.refreshToken, refreshCookieOptions);
     res.status(200).json({
       message: "refreshed",
       token: result.accessToken,
@@ -102,7 +109,7 @@ export const logoutController = async (
   try {
     const token = req.cookies.refreshToken;
     await logoutService(token);
-    res.clearCookie("refreshToken");
+    res.clearCookie("refreshToken", refreshCookieOptions);
     res.status(200).json({
       message: "logged out",
     });
