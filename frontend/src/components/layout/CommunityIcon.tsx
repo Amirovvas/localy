@@ -1,4 +1,4 @@
-import { Building, Building2, MapPin, School } from "lucide-react";
+import { Building, Building2, Landmark, MapPin, School } from "lucide-react";
 import type { CommunityCategory } from "@/lib/mockData";
 
 const ICONS: Record<CommunityCategory, typeof Building2> = {
@@ -6,6 +6,7 @@ const ICONS: Record<CommunityCategory, typeof Building2> = {
   school: School,
   district: MapPin,
   residential: Building,
+  city: Landmark,
 };
 
 interface IProps {

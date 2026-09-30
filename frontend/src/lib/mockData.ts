@@ -1,11 +1,12 @@
 export type CommunityId = "auca" | "oktyabrsky";
-export type CommunityCategory = "university" | "school" | "district" | "residential";
+export type CommunityCategory = "university" | "school" | "district" | "residential" | "city";
 
 export const COMMUNITY_CATEGORY_LABELS: Record<CommunityCategory, string> = {
   university: "Университеты, институты и колледжи",
   school: "Школы",
   district: "Районы",
   residential: "Жилые комплексы",
+  city: "Города",
 };
 
 export interface Community {

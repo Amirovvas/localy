@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuthStatus } from "@/hooks/auth/useHasToken";
 import { useProfile } from "@/hooks/auth/useProfile";
+import { useGetMyCommunities } from "@/hooks/communities/useGetMyCommunities";
 import { isPublicRoute } from "@/lib/routes";
 
 interface IProps {
@@ -28,6 +29,11 @@ const AuthGate = ({ children }: IProps) => {
   const authStatus = useAuthStatus();
   const isAuthorized = authStatus === "in";
   const { data: profile, isLoading: profileLoading } = useProfile();
+  // список "моих сообществ" чату всё равно понадобится сразу после того, как
+  // AuthGate пропустит на страницу — запускаем его здесь же, параллельно с
+  // профилем, а не ждём, пока Chat.tsx домонтируется и запросит его сам
+  // (react-query дедуплицирует по queryKey, так что повторного запроса не будет)
+  useGetMyCommunities();
   const isAdminRoute = pathname === ADMIN_ROUTE || !!pathname?.startsWith(`${ADMIN_ROUTE}/`);
   const mustRedirectToAdmin = isAuthorized && !!profile?.is_admin && !isAdminRoute && !isPublic;
 

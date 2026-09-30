@@ -45,7 +45,11 @@ const Login = () => {
           <h1>С возвращением</h1>
           <p>Войдите, чтобы продолжить общение с вашим сообществом.</p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className={css.form} noValidate>
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className={css.form}
+            noValidate
+          >
             <div className={css.inputGroup}>
               <label htmlFor="email">Электронная почта</label>
               <div className={css.inputWrap}>
@@ -56,11 +60,16 @@ const Login = () => {
                   placeholder="you@community.kg"
                   {...register("email", {
                     required: "Введите почту",
-                    pattern: { value: /^\S+@\S+\.\S+$/, message: "Некорректный email" },
+                    pattern: {
+                      value: /^\S+@\S+\.\S+$/,
+                      message: "Некорректный email",
+                    },
                   })}
                 />
               </div>
-              {errors.email && <span className={css.errorText}>{errors.email.message}</span>}
+              {errors.email && (
+                <span className={css.errorText}>{errors.email.message}</span>
+              )}
             </div>
 
             <div className={css.inputGroup}>
@@ -86,20 +95,18 @@ const Login = () => {
               </p>
             )}
 
-            <button type="submit" className={css.button} disabled={loginMutation.isPending}>
+            <button
+              type="submit"
+              className={css.button}
+              disabled={loginMutation.isPending}
+            >
               {loginMutation.isPending ? "Входим..." : "Войти"}
             </button>
           </form>
 
           <p className={css.hint}>
-            В каждой комнате вы будете участвовать анонимно — имя и почта никогда
-            не показываются другим.
-          </p>
-
-          <p className={css.loginText}>
-            <button type="button" className={css.linkBtn}>
-              Забыли пароль?
-            </button>
+            В каждой комнате вы будете участвовать анонимно — имя и почта
+            никогда не показываются другим.
           </p>
 
           <p className={css.loginText}>

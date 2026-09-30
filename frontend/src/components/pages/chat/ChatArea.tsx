@@ -3,13 +3,18 @@ import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import {
   CalendarPlus,
+  ChevronDown,
   CornerUpLeft,
   Flag,
   Info,
   Menu,
   Loader2,
   Paperclip,
+  Pencil,
+  Pin,
+  PinOff,
   Reply,
+  Search,
   Send,
   Smile,
   Sparkles,
@@ -23,8 +28,12 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useGetMessages } from "@/hooks/messages/useGetMessages";
 import { useSendMessage } from "@/hooks/messages/useSendMessage";
 import { useDeleteMessage } from "@/hooks/messages/useDeleteMessage";
+import { useEditMessage } from "@/hooks/messages/useEditMessage";
 import { useRoomSocket } from "@/hooks/messages/useRoomSocket";
 import { useToggleReaction } from "@/hooks/messages/useToggleReaction";
+import { useTogglePin } from "@/hooks/messages/useTogglePin";
+import { usePinnedMessages } from "@/hooks/messages/usePinnedMessages";
+import { useSearchMessages } from "@/hooks/messages/useSearchMessages";
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_IMAGE_SIZE,
@@ -34,6 +43,7 @@ import { useReportMessage, type ReportReason } from "@/hooks/reports/useReportMe
 import { useSummary } from "@/hooks/summary/useSummary";
 import { useTyping } from "@/hooks/chat/useTyping";
 import { useCreateEvent } from "@/hooks/events/useCreateEvent";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { ChatCommunityDetail, ChatMessage, ChatRoom } from "@/lib/chat";
 import { REACTION_EMOJIS } from "@/lib/chat";
 import { formatMembers } from "@/lib/format";
@@ -63,6 +73,8 @@ const REPORT_REASONS: { value: ReportReason; label: string }[] = [
 const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInfo }: IProps) => {
   const { data: messages = [], isLoading: messagesLoading } = useGetMessages(room.id);
   useRoomSocket(room.id);
+  // на телефоне своя системная клавиатура эмодзи — отдельная панель тут не нужна
+  const isMobile = useIsMobile();
 
   const sendMessage = useSendMessage();
   const isSending = sendMessage.isPending;
@@ -98,6 +110,29 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   // своё сообщение, которое сейчас предложено удалить (подтверждение перед удалением)
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
   const deleteMessage = useDeleteMessage();
+  // своё сообщение, которое сейчас редактируется прямо в списке (без модалки)
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState("");
+  const editMessage = useEditMessage();
+
+  // закреплённые сообщения — отдельная полоска над списком, сворачивается
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+  const { data: pinnedMessages = [] } = usePinnedMessages(room.id);
+  const togglePin = useTogglePin();
+
+  // поиск по сообщениям текущей комнаты
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const searchWrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  const { data: searchResults = [], isLoading: searchLoading } = useSearchMessages(
+    room.id,
+    debouncedSearchQuery,
+  );
 
   // "отметить сообщение как событие" — никакого автоопределения по тексту:
   // пользователь сам решает, что это реальный анонс, и сам вводит дату/время
@@ -254,6 +289,25 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     };
   }, [emojiOpen]);
 
+  // закрываем поиск по клику снаружи и по Escape (тот же приём, что у эмодзи)
+  useEffect(() => {
+    if (!searchOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!searchWrapRef.current?.contains(event.target as Node)) setSearchOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSearchOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [searchOpen]);
+
   const startReply = (message: ChatMessage) => {
     setReplyTo(message);
     inputRef.current?.focus();
@@ -268,6 +322,20 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     setTimeout(() => setHighlightedId(null), 1600);
   };
 
+  const handleTogglePin = (message: ChatMessage) => {
+    togglePin.mutate({ roomId: room.id, messageId: message.id });
+  };
+
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery("");
+  };
+
+  const handleSearchResultClick = (messageId: number) => {
+    closeSearch();
+    jumpToMessage(messageId);
+  };
+
   const handleConfirmDelete = () => {
     if (!deleteTarget) return;
 
@@ -280,6 +348,26 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           setDeleteTarget(null);
         },
       },
+    );
+  };
+
+  const startEdit = (message: ChatMessage) => {
+    setEditingId(message.id);
+    setEditDraft(message.text);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDraft("");
+  };
+
+  const handleSaveEdit = () => {
+    const text = editDraft.trim();
+    if (!editingId || !text) return;
+
+    editMessage.mutate(
+      { roomId: room.id, messageId: editingId, text },
+      { onSuccess: cancelEdit },
     );
   };
 
@@ -338,6 +426,58 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
             AI Summary
           </button>
 
+          <div className={css.searchWrap} ref={searchWrapRef}>
+            <button
+              type="button"
+              className={css.searchToggleBtn}
+              onClick={() => setSearchOpen((open) => !open)}
+              aria-label="Поиск по сообщениям"
+              aria-expanded={searchOpen}
+            >
+              <Search size={18} />
+            </button>
+
+            {searchOpen && (
+              <div className={css.searchPanel}>
+                <div className={css.searchInputWrap}>
+                  <Search size={14} className={css.searchInputIcon} />
+                  <input
+                    className={css.searchInput}
+                    placeholder="Поиск по сообщениям в этой комнате..."
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                <div className={css.searchResults}>
+                  {searchLoading && (
+                    <p className={css.searchHint}>Ищем...</p>
+                  )}
+                  {!searchLoading && debouncedSearchQuery && searchResults.length === 0 && (
+                    <p className={css.searchHint}>Ничего не найдено.</p>
+                  )}
+                  {!debouncedSearchQuery && (
+                    <p className={css.searchHint}>Начните вводить текст сообщения.</p>
+                  )}
+                  {searchResults.map((result) => (
+                    <button
+                      key={result.id}
+                      type="button"
+                      className={css.searchResultRow}
+                      onClick={() => handleSearchResultClick(result.id)}
+                    >
+                      <span className={css.searchResultAuthor}>
+                        Аноним #{result.authorId} · {result.time}
+                      </span>
+                      <span className={css.searchResultText}>{result.text || "📷 Фото"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             className={css.infoBtn}
@@ -353,6 +493,48 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         <h2 className={css.roomTitle}>{title}</h2>
         <p className={css.roomDescription}>{room.description}</p>
       </div>
+
+      {pinnedMessages.length > 0 && (
+        <div className={css.pinnedBar}>
+          <button
+            type="button"
+            className={css.pinnedBarHead}
+            onClick={() => setPinnedOpen((open) => !open)}
+          >
+            <Pin size={14} className={css.pinnedBarIcon} />
+            <span>
+              {pinnedMessages.length}{" "}
+              {pinnedMessages.length === 1 ? "закреплённое сообщение" : "закреплённых сообщения"}
+            </span>
+            <ChevronDown size={14} className={css.pinnedBarChevron} data-open={pinnedOpen} />
+          </button>
+
+          {pinnedOpen && (
+            <div className={css.pinnedList}>
+              {pinnedMessages.map((message) => (
+                <div key={message.id} className={css.pinnedRow}>
+                  <button
+                    type="button"
+                    className={css.pinnedRowBody}
+                    onClick={() => jumpToMessage(message.id)}
+                  >
+                    <span className={css.pinnedRowAuthor}>Аноним #{message.authorId}</span>
+                    <span className={css.pinnedRowText}>{message.text || "📷 Фото"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={css.pinnedRowUnpin}
+                    title="Открепить"
+                    onClick={() => handleTogglePin(message)}
+                  >
+                    <PinOff size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {summaryOpen && (
         <div className={css.summaryBanner}>
@@ -407,6 +589,8 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                 <div className={css.head}>
                   <span className={css.author}>Аноним #{message.authorId}</span>
                   <span className={css.time}>{message.time}</span>
+                  {message.isEdited && <span className={css.editedTag}>изменено</span>}
+                  {message.isPinned && <Pin size={11} className={css.pinnedTag} />}
                   {message.isAnnouncement && (
                     <span className={css.announceTag}>Официально</span>
                   )}
@@ -443,7 +627,39 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                   </a>
                 )}
 
-                {message.text && <p className={css.text}>{message.text}</p>}
+                {editingId === message.id ? (
+                  <div className={css.editBox}>
+                    <textarea
+                      className={css.editInput}
+                      value={editDraft}
+                      onChange={(event) => setEditDraft(event.target.value)}
+                      rows={2}
+                      autoFocus
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                          event.preventDefault();
+                          handleSaveEdit();
+                        }
+                        if (event.key === "Escape") cancelEdit();
+                      }}
+                    />
+                    <div className={css.editActions}>
+                      <button type="button" className={css.editCancel} onClick={cancelEdit}>
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        className={css.editSave}
+                        onClick={handleSaveEdit}
+                        disabled={!editDraft.trim() || editMessage.isPending}
+                      >
+                        {editMessage.isPending ? "Сохраняем..." : "Сохранить"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  message.text && <p className={css.text}>{message.text}</p>
+                )}
 
                 {reactions.length > 0 && (
                   <div className={css.reactions}>
@@ -493,15 +709,34 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                 >
                   <CalendarPlus size={14} />
                 </button>
+                <button
+                  type="button"
+                  className={css.hoverBtn}
+                  data-active={message.isPinned}
+                  title={message.isPinned ? "Открепить" : "Закрепить"}
+                  onClick={() => handleTogglePin(message)}
+                >
+                  {message.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                </button>
                 {isOwn ? (
-                  <button
-                    type="button"
-                    className={css.hoverBtn}
-                    title="Удалить"
-                    onClick={() => setDeleteTarget(message)}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={css.hoverBtn}
+                      title="Редактировать"
+                      onClick={() => startEdit(message)}
+                    >
+                      <Pencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className={css.hoverBtn}
+                      title="Удалить"
+                      onClick={() => setDeleteTarget(message)}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -625,20 +860,24 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
               else stopTyping();
             }}
           />
-          <button
-            type="button"
-            className={`${css.emojiBtn} ${emojiOpen ? css.emojiBtnActive : ""}`}
-            aria-label="Смайлики"
-            aria-expanded={emojiOpen}
-            onClick={() => setEmojiOpen((open) => !open)}
-          >
-            <Smile size={18} />
-          </button>
+          {!isMobile && (
+            <>
+              <button
+                type="button"
+                className={`${css.emojiBtn} ${emojiOpen ? css.emojiBtnActive : ""}`}
+                aria-label="Смайлики"
+                aria-expanded={emojiOpen}
+                onClick={() => setEmojiOpen((open) => !open)}
+              >
+                <Smile size={18} />
+              </button>
 
-          {emojiOpen && (
-            <div className={css.emojiPanel} role="dialog" aria-label="Выбор эмодзи">
-              <EmojiPickerPanel onSelect={insertEmoji} />
-            </div>
+              {emojiOpen && (
+                <div className={css.emojiPanel} role="dialog" aria-label="Выбор эмодзи">
+                  <EmojiPickerPanel onSelect={insertEmoji} />
+                </div>
+              )}
+            </>
           )}
         </div>
 

@@ -18,13 +18,16 @@ interface IUpdateBody {
 }
 
 // обычным пользователям (регистрация, поиск) видны только "активные"
-// сообщества — pending/archived показываются лишь в Admin Panel
+// сообщества — pending/archived показываются лишь в Admin Panel.
+// Городские чаты (category='city') сюда не попадают — их нельзя выбрать
+// вручную, пользователь добавляется в свой городской чат автоматически
+// при регистрации по полю city (см. registerService)
 export const listCommunitiesService = async () => {
   const result = await pool.query(
     `
     select id, name, category, city, description
     from communities
-    where status = 'active'
+    where status = 'active' and category != 'city'
     order by category, name
     `,
   );

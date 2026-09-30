@@ -9,6 +9,8 @@ export interface RawMessage {
   attachment: string | null;
   is_announcement: boolean;
   created_at: string;
+  edited_at: string | null;
+  pinned_at: string | null;
   anon_id: number;
   reply_to_id: number | null;
   reply_text: string | null;
@@ -28,6 +30,8 @@ export const mapMessage = (raw: RawMessage): ChatMessage => ({
   time: formatMessageTime(raw.created_at),
   attachment: raw.attachment ?? undefined,
   isAnnouncement: raw.is_announcement,
+  isEdited: !!raw.edited_at,
+  isPinned: !!raw.pinned_at,
   reactions: raw.reactions ?? [],
   replyTo:
     raw.reply_to_id !== null && raw.reply_text !== null && raw.reply_anon_id !== null

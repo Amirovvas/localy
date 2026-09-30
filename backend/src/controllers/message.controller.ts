@@ -3,7 +3,11 @@ import {
   clearRoomMessagesService,
   createMessageService,
   deleteMessageService,
+  editMessageService,
   listMessagesService,
+  listPinnedMessagesService,
+  searchMessagesService,
+  togglePinMessageService,
 } from "../services/message.service";
 import { toggleMessageReactionService } from "../services/reaction.service";
 import { apiErrors } from "../utils/apiErrors";
@@ -38,6 +42,20 @@ export const createMessageController = async (
   }
 };
 
+export const editMessageController = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = (req as any).user.id;
+    const message = await editMessageService(Number(req.params.id), userId, req.body.text);
+    res.status(200).json({ message: "message edited", data: message });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteMessageController = async (
   req: Request<{ id: string }>,
   res: Response,
@@ -47,6 +65,59 @@ export const deleteMessageController = async (
     const userId = (req as any).user.id;
     await deleteMessageService(Number(req.params.id), userId);
     res.status(200).json({ message: "message deleted" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const togglePinMessageController = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = (req as any).user.id;
+    const message = await togglePinMessageService(Number(req.params.id), userId);
+    res.status(200).json({ message: "pin toggled", data: message });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPinnedMessagesController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = (req as any).user.id;
+    const roomId = Number(req.query.roomId);
+    if (!roomId) throw apiErrors.badRequest("roomId is required");
+
+    const messages = await listPinnedMessagesService(roomId, userId);
+    res.status(200).json({ message: "pinned messages", data: messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const searchMessagesController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = (req as any).user.id;
+    const roomId = Number(req.query.roomId);
+    const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    if (!roomId) throw apiErrors.badRequest("roomId is required");
+    if (!query) {
+      res.status(200).json({ message: "search results", data: [] });
+      return;
+    }
+
+    const messages = await searchMessagesService(roomId, userId, query);
+    res.status(200).json({ message: "search results", data: messages });
   } catch (error) {
     next(error);
   }

@@ -214,11 +214,10 @@
 ========================= */
 
 .hint {
-  margin: 18px 0 0;
+  margin: 84px 0 0;
   padding: 10px 12px;
 
   border-radius: var(--loc-radius-md);
-  background: var(--loc-accent-soft);
   color: var(--loc-accent);
 
   font-size: 12px;

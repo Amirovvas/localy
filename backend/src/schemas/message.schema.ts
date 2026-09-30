@@ -13,3 +13,7 @@ export const createMessageSchema = z
     message: "Сообщение не может быть пустым",
     path: ["text"],
   });
+
+export const editMessageSchema = z.object({
+  text: z.string().trim().min(1, "Сообщение не может быть пустым").max(4000, "Сообщение слишком длинное"),
+});

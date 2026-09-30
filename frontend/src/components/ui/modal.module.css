@@ -87,3 +87,20 @@
   border-top: 1px solid var(--loc-border);
   background: var(--loc-surface-soft);
 }
+
+/* на телефоне окно по центру экрана с отступами со всех сторон — не самый
+   удобный формат: превращаем его в шторку снизу на всю ширину, как в
+   большинстве мобильных приложений */
+@media (max-width: 640px) {
+  .scrim {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .modal {
+    max-width: 100% !important;
+    max-height: 85vh;
+
+    border-radius: var(--loc-radius-lg) var(--loc-radius-lg) 0 0;
+  }
+}

@@ -20,6 +20,7 @@ const CATEGORY_FILTERS: { id: CommunityCategory | "all"; label: string }[] = [
   { id: "school", label: "Школы" },
   { id: "district", label: "Районы" },
   { id: "residential", label: "ЖК" },
+  { id: "city", label: "Города" },
 ];
 
 const CATEGORY_OPTIONS = Object.entries(COMMUNITY_CATEGORY_LABELS) as [

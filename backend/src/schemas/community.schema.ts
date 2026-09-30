@@ -1,6 +1,6 @@
 import z from "zod";
 
-const categoryEnum = z.enum(["university", "school", "district", "residential"]);
+const categoryEnum = z.enum(["university", "school", "district", "residential", "city"]);
 const statusEnum = z.enum(["active", "pending", "archived"]);
 
 export const createCommunitySchema = z.object({

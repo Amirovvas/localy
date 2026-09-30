@@ -19,7 +19,7 @@ interface ICreateBody {
 // userParam — плейсхолдер с id читающего пользователя, нужен для флага reactions[].mine
 const selectMessage = (userParam: string) => `
   select
-    m.id, m.text, m.attachment, m.is_announcement, m.created_at, u.anon_id,
+    m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at, u.anon_id,
     m.reply_to_id,
     coalesce(nullif(left(rm.text, 200), ''), case when rm.attachment is not null then '📷 Фото' end) as reply_text,
     ru.anon_id as reply_anon_id,
@@ -118,6 +118,73 @@ export const createMessageService = async (body: ICreateBody) => {
     if (error.code === "23503") throw apiErrors.badRequest("Комната не найдена");
     throw error;
   }
+};
+
+export const editMessageService = async (id: number, userId: number, text: string) => {
+  // пока разрешаем редактировать только своё сообщение, как и удаление
+  const updated = await pool.query(
+    `update messages set text = $1, edited_at = now() where id = $2 and user_id = $3 returning room_id`,
+    [text, id, userId],
+  );
+  if (!updated.rows[0]) {
+    throw apiErrors.notFound("Сообщение не найдено или у вас нет прав на редактирование");
+  }
+  const { room_id: roomId } = updated.rows[0];
+
+  const full = await pool.query(`${selectMessage("$2")} where m.id = $1`, [id, userId]);
+  const fullMessage = full.rows[0];
+
+  getIO()?.to(roomChannel(roomId)).emit("message:edited", { ...fullMessage, room_id: roomId });
+
+  return fullMessage;
+};
+
+export const togglePinMessageService = async (id: number, userId: number) => {
+  const message = await pool.query(`select room_id, pinned_at from messages where id = $1`, [id]);
+  if (!message.rows[0]) throw apiErrors.notFound("Сообщение не найдено");
+  const { room_id: roomId, pinned_at: pinnedAt } = message.rows[0];
+
+  await pool.query(`update messages set pinned_at = $1 where id = $2`, [
+    pinnedAt ? null : new Date(),
+    id,
+  ]);
+
+  const full = await pool.query(`${selectMessage("$2")} where m.id = $1`, [id, userId]);
+  const fullMessage = full.rows[0];
+
+  getIO()?.to(roomChannel(roomId)).emit("message:pin", { ...fullMessage, room_id: roomId });
+
+  return fullMessage;
+};
+
+// закреплённые сообщения видны всем участникам комнаты независимо от того,
+// очищал ли кто-то историю у себя — это отдельная, "поверх" обычного списка
+export const listPinnedMessagesService = async (roomId: number, userId: number) => {
+  const result = await pool.query(
+    `${selectMessage("$2")} where m.room_id = $1 and m.pinned_at is not null order by m.pinned_at desc`,
+    [roomId, userId],
+  );
+  return result.rows;
+};
+
+export const searchMessagesService = async (roomId: number, userId: number, query: string) => {
+  // экранируем спецсимволы ilike, чтобы "%" и "_" в поиске искались буквально
+  const escaped = query.replace(/[\\%_]/g, "\\$&");
+  const result = await pool.query(
+    `
+    ${selectMessage("$2")}
+    where m.room_id = $1
+      and m.created_at > coalesce(
+        (select cleared_at from message_clears where user_id = $2 and room_id = $1),
+        '-infinity'
+      )
+      and m.text ilike $3
+    order by m.created_at desc
+    limit 50
+    `,
+    [roomId, userId, `%${escaped}%`],
+  );
+  return result.rows;
 };
 
 export const deleteMessageService = async (id: number, userId: number) => {

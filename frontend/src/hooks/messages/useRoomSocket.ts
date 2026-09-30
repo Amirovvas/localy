@@ -29,6 +29,28 @@ export const useRoomSocket = (roomId: number | null) => {
       });
     };
 
+    const handleEditedMessage = (raw: RawMessage & { room_id: number }) => {
+      if (raw.room_id !== roomId) return;
+
+      const message = mapMessage(raw);
+      queryClient.setQueryData<ChatMessage[]>(["messages", roomId], (prev) =>
+        prev?.map((existing) => (existing.id === message.id ? message : existing)),
+      );
+    };
+
+    // закрепление/открепление меняет и само сообщение (флаг isPinned), и
+    // список закреплённых — второй проще перезапросить, чем вручную
+    // пересобирать на клиенте
+    const handlePinUpdate = (raw: RawMessage & { room_id: number }) => {
+      if (raw.room_id !== roomId) return;
+
+      const message = mapMessage(raw);
+      queryClient.setQueryData<ChatMessage[]>(["messages", roomId], (prev) =>
+        prev?.map((existing) => (existing.id === message.id ? message : existing)),
+      );
+      queryClient.invalidateQueries({ queryKey: ["messages", "pinned", roomId] });
+    };
+
     const handleReactionUpdate = (payload: {
       room_id: number;
       message_id: number;
@@ -56,12 +78,16 @@ export const useRoomSocket = (roomId: number | null) => {
     };
 
     socket.on("message:new", handleNewMessage);
+    socket.on("message:edited", handleEditedMessage);
+    socket.on("message:pin", handlePinUpdate);
     socket.on("reaction:update", handleReactionUpdate);
     socket.on("message:deleted", handleDeletedMessage);
 
     return () => {
       socket.emit("room:leave", roomId);
       socket.off("message:new", handleNewMessage);
+      socket.off("message:edited", handleEditedMessage);
+      socket.off("message:pin", handlePinUpdate);
       socket.off("reaction:update", handleReactionUpdate);
       socket.off("message:deleted", handleDeletedMessage);
     };

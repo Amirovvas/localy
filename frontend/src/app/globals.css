@@ -175,3 +175,14 @@ button,
 input {
   font-family: inherit;
 }
+
+/* полосы прокрутки везде скрыты — сама прокрутка работает, просто без
+   видимого (и часто не в тему стилизованного) нативного скроллбара */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}

@@ -39,9 +39,20 @@ export const registerService = async (body: IRegisterBody) => {
     );
     const user = userResult.rows[0];
 
+    // помимо выбранных вручную сообществ — автоматически добавляем в
+    // общегородской чат, соответствующий выбранному городу (если он есть)
+    const cityCommunity = await client.query(
+      `select id from communities where category = 'city' and name = $1`,
+      [body.city],
+    );
+    const cityCommunityId: number | undefined = cityCommunity.rows[0]?.id;
+    const allCommunityIds = Array.from(
+      new Set([...body.communityIds, ...(cityCommunityId ? [cityCommunityId] : [])]),
+    );
+
     // сообщества обязаны существовать — иначе внешний ключ бросит ошибку и
     // транзакция откатится целиком
-    const values = body.communityIds
+    const values = allCommunityIds
       .map((_, index) => `($1, $${index + 2})`)
       .join(", ");
     await client.query(
@@ -49,7 +60,7 @@ export const registerService = async (body: IRegisterBody) => {
       insert into community_members (user_id, community_id)
       values ${values}
       `,
-      [user.id, ...body.communityIds],
+      [user.id, ...allCommunityIds],
     );
 
     await client.query("commit");
@@ -154,23 +165,27 @@ export const logoutService = async (refreshToken: string) => {
 };
 
 export const profileService = async (userId: number) => {
-  const userResult = await pool.query(
-    `select id, name, email, city, avatar, anon_id, is_admin, created_at from users where id = $1`,
-    [userId],
-  );
+  // пользователь и его сообщества не зависят друг от друга — запускаем оба
+  // запроса параллельно вместо двух последовательных round-trip'ов к БД
+  const [userResult, communitiesResult] = await Promise.all([
+    pool.query(
+      `select id, name, email, city, avatar, anon_id, is_admin, created_at from users where id = $1`,
+      [userId],
+    ),
+    pool.query(
+      `
+      select c.id, c.name, c.category, c.city
+      from communities c
+      join community_members cm on cm.community_id = c.id
+      where cm.user_id = $1
+      order by c.name
+      `,
+      [userId],
+    ),
+  ]);
+
   const user = userResult.rows[0];
   if (!user) return null;
-
-  const communitiesResult = await pool.query(
-    `
-    select c.id, c.name, c.category, c.city
-    from communities c
-    join community_members cm on cm.community_id = c.id
-    where cm.user_id = $1
-    order by c.name
-    `,
-    [userId],
-  );
 
   return { ...user, communities: communitiesResult.rows };
 };

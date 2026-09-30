@@ -44,6 +44,8 @@ export interface ChatMessage {
   time: string;
   attachment?: string | null;
   isAnnouncement?: boolean;
+  isEdited?: boolean;
+  isPinned?: boolean;
   reactions?: ChatReaction[];
   replyTo?: ChatReplyPreview;
 }

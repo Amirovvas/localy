@@ -146,6 +146,282 @@
 }
 
 /* =========================
+   SEARCH
+========================= */
+
+.searchWrap {
+  position: relative;
+}
+
+.searchToggleBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 32px;
+  height: 32px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  cursor: pointer;
+}
+
+.searchToggleBtn:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+}
+
+.searchPanel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+
+  width: 320px;
+  max-width: 88vw;
+
+  display: flex;
+  flex-direction: column;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-lg);
+  background: var(--loc-surface);
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.16);
+
+  overflow: hidden;
+}
+
+.searchInputWrap {
+  position: relative;
+
+  padding: 10px;
+  border-bottom: 1px solid var(--loc-border);
+}
+
+.searchInputIcon {
+  position: absolute;
+  top: 50%;
+  left: 20px;
+  transform: translateY(-50%);
+
+  color: var(--loc-text-tertiary);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  box-sizing: border-box;
+
+  height: 36px;
+  padding: 0 10px 0 32px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  outline: none;
+
+  background: var(--loc-surface-soft);
+  color: var(--loc-text);
+
+  font-size: 13px;
+}
+
+.searchInput:focus {
+  border-color: var(--loc-accent);
+}
+
+.searchResults {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.searchHint {
+  margin: 0;
+  padding: 16px;
+
+  color: var(--loc-text-tertiary);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.searchResultRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  width: 100%;
+  padding: 10px 14px;
+
+  border: none;
+  border-bottom: 1px solid var(--loc-border);
+  background: transparent;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.searchResultRow:last-child {
+  border-bottom: none;
+}
+
+.searchResultRow:hover {
+  background: var(--loc-surface-soft);
+}
+
+.searchResultAuthor {
+  color: var(--loc-text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.searchResultText {
+  color: var(--loc-text);
+  font-size: 13px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .searchPanel {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    top: 68px;
+
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* =========================
+   PINNED BAR
+========================= */
+
+.pinnedBar {
+  border-bottom: 1px solid var(--loc-border);
+  background: var(--loc-surface);
+}
+
+.pinnedBarHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+
+  padding: 10px 20px;
+
+  border: none;
+  background: transparent;
+  color: var(--loc-text-secondary);
+
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.pinnedBarHead:hover {
+  background: var(--loc-surface-soft);
+}
+
+.pinnedBarIcon {
+  flex-shrink: 0;
+  color: var(--loc-accent);
+}
+
+.pinnedBarChevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--loc-text-tertiary);
+
+  transition: transform 0.15s ease;
+}
+
+.pinnedBarChevron[data-open="true"] {
+  transform: rotate(180deg);
+}
+
+.pinnedList {
+  max-height: 220px;
+  overflow-y: auto;
+
+  border-top: 1px solid var(--loc-border);
+}
+
+.pinnedRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 4px 10px 4px 20px;
+  border-bottom: 1px solid var(--loc-border);
+}
+
+.pinnedRow:last-child {
+  border-bottom: none;
+}
+
+.pinnedRowBody {
+  min-width: 0;
+  flex: 1;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  padding: 6px 4px;
+
+  border: none;
+  background: transparent;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.pinnedRowAuthor {
+  color: var(--loc-text-tertiary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pinnedRowText {
+  color: var(--loc-text);
+  font-size: 13px;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pinnedRowUnpin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  width: 28px;
+  height: 28px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+  background: transparent;
+  color: var(--loc-text-tertiary);
+
+  cursor: pointer;
+}
+
+.pinnedRowUnpin:hover {
+  background: var(--loc-surface-soft);
+  color: var(--loc-danger);
+}
+
+/* =========================
    ROOM HEAD
 ========================= */
 
@@ -345,6 +621,88 @@
   word-break: break-word;
 }
 
+.editedTag {
+  color: var(--loc-text-tertiary);
+  font-size: 11px;
+}
+
+.pinnedTag {
+  flex-shrink: 0;
+  color: var(--loc-accent);
+}
+
+/* =========================
+   INLINE EDIT
+========================= */
+
+.editBox {
+  margin: 3px 0 0;
+}
+
+.editInput {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+
+  padding: 8px 10px;
+
+  border: 1px solid var(--loc-accent);
+  border-radius: var(--loc-radius-md);
+  outline: none;
+
+  background: var(--loc-surface);
+  color: var(--loc-text);
+
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+}
+
+.editActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+
+  margin-top: 6px;
+}
+
+.editCancel,
+.editSave {
+  padding: 5px 12px;
+
+  border: none;
+  border-radius: var(--loc-radius-sm);
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.editCancel {
+  background: var(--loc-surface-soft);
+  color: var(--loc-text-secondary);
+}
+
+.editCancel:hover {
+  background: var(--loc-border);
+  color: var(--loc-text);
+}
+
+.editSave {
+  background: var(--loc-accent);
+  color: #ffffff;
+}
+
+.editSave:hover {
+  background: var(--loc-accent-hover);
+}
+
+.editSave:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .attachment {
   display: inline-flex;
   align-items: center;
@@ -440,6 +798,10 @@
   color: var(--loc-text);
 }
 
+.hoverBtn[data-active="true"] {
+  color: var(--loc-accent);
+}
+
 /* =========================
    INPUT BAR
 ========================= */
@@ -513,6 +875,14 @@
 .messageInput:focus {
   border-color: var(--loc-accent);
   background: var(--loc-surface);
+}
+
+/* на телефоне кнопки эмодзи нет (своя системная клавиатура) — правый отступ
+   под неё тоже не нужен */
+@media (max-width: 767px) {
+  .messageInput {
+    padding-right: 14px;
+  }
 }
 
 .emojiBtn {
@@ -778,7 +1148,10 @@
 }
 
 .message.highlighted {
-  background: #fef9c3;
+  /* литерал, а не var(--loc-accent-soft): CSS-переменные в незарегистрированном
+     виде не анимируются через transition — с var() тут фон весь 1.6с оставался
+     бы прозрачным вместо плавного появления подсветки */
+  background: #2a2a55;
   transition: background 0.3s ease;
 }
 

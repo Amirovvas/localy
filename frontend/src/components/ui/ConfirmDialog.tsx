@@ -1,5 +1,4 @@
 "use client";
-import { AlertTriangle } from "lucide-react";
 import css from "./confirmDialog.module.css";
 
 interface IProps {
@@ -24,10 +23,6 @@ const ConfirmDialog = ({
   return (
     <div className={css.scrim} onClick={onCancel}>
       <div className={css.dialog} onClick={(event) => event.stopPropagation()}>
-        <span className={css.icon} data-danger={danger}>
-          <AlertTriangle size={18} />
-        </span>
-
         <h3 className={css.title}>{title}</h3>
         <p className={css.message}>{message}</p>
 
