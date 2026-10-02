@@ -11,6 +11,12 @@ export const registerSchema = z.object({
     .min(1, "Выберите хотя бы одно сообщество"),
 });
 
+// редактирование профиля: пока можно менять только отображаемое имя
+// (оно видно лишь самому пользователю и админу, другим показывается Аноним #N)
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, "Имя обязательно").max(100, "Имя слишком длинное"),
+});
+
 export const loginSchema = z.object({
   email: z.email("Некорректный email"),
   password: z.string().min(1, "Пароль обязателен"),

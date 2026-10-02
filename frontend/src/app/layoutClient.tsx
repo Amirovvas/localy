@@ -14,7 +14,7 @@ interface IProps {
 const ADMIN_ROUTE = "/admin";
 
 // Защита маршрутов: без accessToken любая страница, кроме входа/регистрации,
-// сразу отправляет на /login. Пока проверка не завершилась ("unknown" — первый
+// сразу отправляет на /register. Пока проверка не завершилась ("unknown" — первый
 // гидратационный рендер), закрытые страницы не рендерятся вовсе — иначе их
 // содержимое мигнуло бы перед редиректом.
 //
@@ -39,7 +39,7 @@ const AuthGate = ({ children }: IProps) => {
 
   useEffect(() => {
     if (authStatus === "out" && !isPublic) {
-      replace("/login");
+      replace("/register");
     }
   }, [authStatus, isPublic, replace]);
 

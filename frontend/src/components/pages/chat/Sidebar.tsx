@@ -1,12 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, Hash, Plus, Settings, X } from "lucide-react";
 import css from "./sidebar.module.css";
 import { LogoMark } from "@/components/layout/Logo";
 import { Avatar } from "@/components/layout/Avatar";
 import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import JoinCommunityModal from "./JoinCommunityModal";
-import ProfileModal from "./ProfileModal";
 import { formatMembers } from "@/lib/format";
 import type { ChatCommunity, ChatRoom } from "@/lib/chat";
 
@@ -39,7 +39,7 @@ const Sidebar = ({
 }: IProps) => {
   const [isSwitcherOpen, setSwitcherOpen] = useState(false);
   const [isJoinOpen, setJoinOpen] = useState(false);
-  const [isProfileOpen, setProfileOpen] = useState(false);
+  const { push } = useRouter();
 
   return (
     <aside className={css.sidebar} data-open={isOpen} data-collapsed={isCollapsed}>
@@ -144,7 +144,7 @@ const Sidebar = ({
             type="button"
             className={css.settingsBtn}
             aria-label="Профиль"
-            onClick={() => setProfileOpen(true)}
+            onClick={() => push("/profile")}
           >
             <Settings size={16} />
           </button>
@@ -161,7 +161,6 @@ const Sidebar = ({
         />
       )}
 
-      {isProfileOpen && <ProfileModal onClose={() => setProfileOpen(false)} />}
     </aside>
   );
 };

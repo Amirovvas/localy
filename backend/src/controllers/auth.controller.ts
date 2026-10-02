@@ -5,6 +5,7 @@ import {
   profileService,
   refreshService,
   registerService,
+  updateProfileService,
 } from "../services/auth.service";
 
 // фронтенд и бэкенд живут на разных доменах (vercel.app / onrender.com) —
@@ -94,6 +95,23 @@ export const profileController = async (
     const result = await profileService(userId);
     res.status(200).json({
       message: "profile",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfileController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = (req as any).user.id;
+    const result = await updateProfileService(userId, req.body.name);
+    res.status(200).json({
+      message: "profile updated",
       data: result,
     });
   } catch (error) {

@@ -14,6 +14,7 @@ export const useJoinCommunity = () => {
       // мои сообщества изменились, а список "можно вступить" — тоже
       queryClient.invalidateQueries({ queryKey: ["communities", "mine"] });
       queryClient.invalidateQueries({ queryKey: ["communities", "discover"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 };

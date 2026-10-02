@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/api";
 import { useHasToken } from "./useHasToken";
+import type { CommunityCategory } from "@/lib/mockData";
 
 export interface IProfileCommunity {
   id: number;
   name: string;
-  category: "university" | "school" | "district" | "residential";
+  category: CommunityCategory;
   city: string;
 }
 

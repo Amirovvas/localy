@@ -192,6 +192,15 @@ export const profileService = async (userId: number) => {
   return { ...user, communities: communitiesResult.rows };
 };
 
+export const updateProfileService = async (userId: number, name: string) => {
+  const result = await pool.query(
+    `update users set name = $1, updated_at = now() where id = $2 returning id, name`,
+    [name, userId],
+  );
+  if (!result.rows[0]) throw apiErrors.notFound("Пользователь не найден");
+  return result.rows[0];
+};
+
 // ---- Admin Panel: управление пользователями ----
 
 // поиск по имени/почте — используется таблицей "Пользователи" в Admin Panel.

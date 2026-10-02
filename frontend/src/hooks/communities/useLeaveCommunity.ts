@@ -19,6 +19,8 @@ export const useLeaveCommunity = () => {
       queryClient.removeQueries({ queryKey: ["communities", communityId] });
       // покинутое сообщество снова доступно для вступления
       queryClient.invalidateQueries({ queryKey: ["communities", "discover"] });
+      // страница профиля показывает свой список сообществ
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });
 };
