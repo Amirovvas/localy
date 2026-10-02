@@ -185,3 +185,7 @@
   opacity: 0.6;
   cursor: default;
 }
+
+.nearMe {
+  margin-top: 12px;
+}

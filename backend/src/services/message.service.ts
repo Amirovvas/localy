@@ -2,7 +2,9 @@ import { pool } from "../plugins/pg";
 import { apiErrors } from "../utils/apiErrors";
 import { getIO, roomChannel } from "../plugins/socket";
 import { reactionsSelect } from "./reaction.service";
-import { assertOwnAttachment } from "../plugins/storage";
+import { assertOwnAttachment, removeImageByUrl } from "../plugins/storage";
+import { assertNoBannedWords } from "../utils/bannedWords";
+import { assertMessageRate } from "../utils/rateLimit";
 
 interface ICreateBody {
   roomId: number;
@@ -72,7 +74,32 @@ export const clearRoomMessagesService = async (roomId: number, userId: number) =
   );
 };
 
+// null — пользователь ещё не открывал эту комнату, фронт в этом случае не
+// показывает разделитель "Непрочитанные сообщения" (не с чем сравнивать)
+export const getReadStateService = async (roomId: number, userId: number) => {
+  const result = await pool.query(
+    `select last_read_message_id from room_reads where user_id = $1 and room_id = $2`,
+    [userId, roomId],
+  );
+  return result.rows[0]?.last_read_message_id ?? null;
+};
+
+export const markRoomReadService = async (roomId: number, userId: number) => {
+  await pool.query(
+    `
+    insert into room_reads (user_id, room_id, last_read_message_id)
+    select $1, $2, coalesce(max(id), 0) from messages where room_id = $2
+    on conflict (user_id, room_id) do update
+      set last_read_message_id = excluded.last_read_message_id
+      where excluded.last_read_message_id > room_reads.last_read_message_id
+    `,
+    [userId, roomId],
+  );
+};
+
 export const createMessageService = async (body: ICreateBody) => {
+  assertMessageRate(body.userId);
+  assertNoBannedWords(body.text);
   assertOwnAttachment(body.attachment);
 
   // отвечать можно только на сообщение из этой же комнаты
@@ -86,11 +113,27 @@ export const createMessageService = async (body: ICreateBody) => {
   }
 
   try {
-    const inserted = await pool.query(
+    // insert и выборку полной строки (с автором и цитатой) делаем одним
+    // запросом вместо двух — лишний round-trip к базе заметен в задержке
+    // отправки сообщения. Реакций у только что созданного сообщения быть не
+    // может, поэтому вместо reactionsSelect() просто пустой массив
+    const full = await pool.query(
       `
-      insert into messages (room_id, user_id, text, attachment, is_announcement, reply_to_id)
-      values ($1, $2, $3, $4, $5, $6)
-      returning id
+      with inserted as (
+        insert into messages (room_id, user_id, text, attachment, is_announcement, reply_to_id)
+        values ($1, $2, $3, $4, $5, $6)
+        returning *
+      )
+      select
+        m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at,
+        u.anon_id, m.reply_to_id,
+        coalesce(nullif(left(rm.text, 200), ''), case when rm.attachment is not null then '📷 Фото' end) as reply_text,
+        ru.anon_id as reply_anon_id,
+        '[]'::json as reactions
+      from inserted m
+      join users u on u.id = m.user_id
+      left join messages rm on rm.id = m.reply_to_id
+      left join users ru on ru.id = rm.user_id
       `,
       [
         body.roomId,
@@ -101,11 +144,6 @@ export const createMessageService = async (body: ICreateBody) => {
         body.replyToId ?? null,
       ],
     );
-
-    const full = await pool.query(`${selectMessage("$2")} where m.id = $1`, [
-      inserted.rows[0].id,
-      body.userId,
-    ]);
     const fullMessage = full.rows[0];
 
     // живой пуш всем, кто сейчас открыл эту комнату
@@ -121,6 +159,7 @@ export const createMessageService = async (body: ICreateBody) => {
 };
 
 export const editMessageService = async (id: number, userId: number, text: string) => {
+  assertNoBannedWords(text);
   // пока разрешаем редактировать только своё сообщение, как и удаление
   const updated = await pool.query(
     `update messages set text = $1, edited_at = now() where id = $2 and user_id = $3 returning room_id`,
@@ -191,7 +230,7 @@ export const deleteMessageService = async (id: number, userId: number) => {
   // пока разрешаем удалять только своё сообщение — модерация чужих сообщений
   // (через Admin Panel / роль admin) уже есть отдельно, в report.service.ts
   const result = await pool.query(
-    `delete from messages where id = $1 and user_id = $2 returning id, room_id`,
+    `delete from messages where id = $1 and user_id = $2 returning id, room_id, attachment`,
     [id, userId],
   );
   if (!result.rows[0]) {
@@ -202,6 +241,16 @@ export const deleteMessageService = async (id: number, userId: number) => {
   // всех сразу, а не только после перезагрузки
   const { room_id: roomId } = result.rows[0];
   getIO()?.to(roomChannel(roomId)).emit("message:deleted", { room_id: roomId, id });
+
+  // картинка удалённого сообщения больше не нужна — убираем и из Storage
+  // (если на неё не ссылается другое сообщение)
+  const { attachment } = result.rows[0];
+  if (attachment) {
+    const stillUsed = await pool.query(`select 1 from messages where attachment = $1 limit 1`, [
+      attachment,
+    ]);
+    if (!stillUsed.rows[0]) await removeImageByUrl(attachment);
+  }
 
   return result.rows[0];
 };

@@ -6,6 +6,7 @@ import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { COMMUNITY_CATEGORY_LABELS, type CommunityCategory } from "@/lib/mockData";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { COMMUNITY_STATUS_LABELS, type AdminCommunity, type CommunityStatus } from "@/lib/admin";
 import { useAdminCommunities } from "@/hooks/admin/useAdminCommunities";
 import { useCreateCommunity } from "@/hooks/admin/useCreateCommunity";
@@ -42,6 +43,9 @@ interface FormState {
   city: string;
   description: string;
   status: CommunityStatus;
+  // координаты вводятся текстом (пусто — без координат)
+  lat: string;
+  lng: string;
 }
 
 const emptyForm: FormState = {
@@ -50,6 +54,8 @@ const emptyForm: FormState = {
   city: "",
   description: "",
   status: "pending",
+  lat: "",
+  lng: "",
 };
 
 const CommunitiesSection = () => {
@@ -95,6 +101,8 @@ const CommunitiesSection = () => {
       city: community.city,
       description: community.description,
       status: community.status,
+      lat: community.lat === null ? "" : String(community.lat),
+      lng: community.lng === null ? "" : String(community.lng),
     });
     setEditingId(community.id);
     setFormError(null);
@@ -110,20 +118,30 @@ const CommunitiesSection = () => {
     event.preventDefault();
     if (!formData.name.trim() || !formData.city.trim()) return;
 
+    // пустое поле — нет координат (null), иначе обычное число
+    const lat = formData.lat.trim() === "" ? null : Number(formData.lat.replace(",", "."));
+    const lng = formData.lng.trim() === "" ? null : Number(formData.lng.replace(",", "."));
+    if (
+      (lat !== null && (Number.isNaN(lat) || lat < -90 || lat > 90)) ||
+      (lng !== null && (Number.isNaN(lng) || lng < -180 || lng > 180))
+    ) {
+      setFormError("Координаты должны быть числами: широта от -90 до 90, долгота от -180 до 180");
+      return;
+    }
+    const body = { ...formData, lat, lng };
+
     setFormError(null);
     const onError = (error: unknown) => {
-      const message = (error as { response?: { data?: { message?: string } } }).response?.data
-        ?.message;
-      setFormError(message ?? "Не удалось сохранить сообщество");
+      setFormError(getApiErrorMessage(error) ?? "Не удалось сохранить сообщество");
     };
 
     if (formMode === "edit" && editingId) {
       updateCommunity.mutate(
-        { id: editingId, ...formData },
+        { id: editingId, ...body },
         { onSuccess: closeForm, onError },
       );
     } else {
-      createCommunity.mutate(formData, { onSuccess: closeForm, onError });
+      createCommunity.mutate(body, { onSuccess: closeForm, onError });
     }
   };
 
@@ -314,6 +332,32 @@ const CommunitiesSection = () => {
                   setFormData((f) => ({ ...f, description: event.target.value }))
                 }
               />
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.inputGroup}>
+                <label htmlFor="community-lat">Широта (необязательно)</label>
+                <input
+                  id="community-lat"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="42.8746"
+                  value={formData.lat}
+                  onChange={(event) => setFormData((f) => ({ ...f, lat: event.target.value }))}
+                />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label htmlFor="community-lng">Долгота (необязательно)</label>
+                <input
+                  id="community-lng"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="74.5698"
+                  value={formData.lng}
+                  onChange={(event) => setFormData((f) => ({ ...f, lng: event.target.value }))}
+                />
+              </div>
             </div>
 
             <div className={styles.inputGroup}>

@@ -15,6 +15,10 @@ import css from "./register.module.css";
 import { LogoMark } from "@/components/layout/Logo";
 import SearchSelect from "@/components/ui/SearchSelect";
 import { cityOptions, type SelectOption } from "@/lib/registerOptions";
+import NearMeButton from "@/components/ui/NearMeButton";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { getApiErrorMessage } from "@/lib/apiError";
+import { formatDistance, sortByDistance } from "@/lib/geo";
 import {
   useGetCommunities,
   type CommunityCategory,
@@ -71,6 +75,19 @@ const Register = () => {
     },
   });
 
+  // после разрешения геолокации места сортируются по расстоянию от пользователя
+  const { coords, status: locationStatus, requestLocation } = useUserLocation();
+
+  const sortedCommunities = useMemo(
+    () => (communities ? sortByDistance(communities, coords) : []),
+    [communities, coords],
+  );
+
+  // три ближайших места (любой категории) — короткая рекомендация над списками
+  const nearest = sortedCommunities
+    .filter((community) => community.distance !== null)
+    .slice(0, 3);
+
   const grouped = useMemo(() => {
     if (!communities) return emptyGroups;
     const groups: Record<CommunityCategory, SelectOption[]> = {
@@ -79,14 +96,17 @@ const Register = () => {
       district: [],
       residential: [],
     };
-    for (const community of communities) {
+    for (const community of sortedCommunities) {
       groups[community.category].push({
         id: String(community.id),
-        label: community.name,
+        label:
+          community.distance !== null
+            ? `${community.name} · ${formatDistance(community.distance)}`
+            : community.name,
       });
     }
     return groups;
-  }, [communities]);
+  }, [communities, sortedCommunities]);
 
   const onSubmit = (data: FormValues) => {
     const communityIds = [
@@ -122,8 +142,7 @@ const Register = () => {
     );
   };
 
-  const serverError = (registerMutation.error as any)?.response?.data
-    ?.message as string | undefined;
+  const serverError = getApiErrorMessage(registerMutation.error);
 
   return (
     <div className={css.container}>
@@ -235,9 +254,21 @@ const Register = () => {
               Ваши места
             </div>
             <p className={css.dividerHint}>
-              Выберите один или несколько вариантов в разных категориях — это
-              поможет находить сообщества рядом с вами.
+              Выберите по одному варианту в категориях «Университеты», «Районы»
+              и «ЖК» (школ можно несколько) — это поможет находить сообщества
+              рядом с вами.
             </p>
+
+            <NearMeButton status={locationStatus} onClick={requestLocation} />
+
+            {nearest.length > 0 && (
+              <p className={css.dividerHint}>
+                Ближайшие к вам:{" "}
+                {nearest
+                  .map((place) => `${place.name} (${formatDistance(place.distance ?? 0)})`)
+                  .join(", ")}
+              </p>
+            )}
 
             {communitiesError && (
               <p className={css.errorText}>
@@ -254,6 +285,7 @@ const Register = () => {
                   render={({ field }) => (
                     <SearchSelect
                       options={grouped.university}
+                      multiple={false}
                       value={field.value}
                       onChange={field.onChange}
                       placeholder={
@@ -294,6 +326,7 @@ const Register = () => {
                   render={({ field }) => (
                     <SearchSelect
                       options={grouped.district}
+                      multiple={false}
                       value={field.value}
                       onChange={field.onChange}
                       placeholder={
@@ -312,6 +345,7 @@ const Register = () => {
                   render={({ field }) => (
                     <SearchSelect
                       options={grouped.residential}
+                      multiple={false}
                       value={field.value}
                       onChange={field.onChange}
                       placeholder={

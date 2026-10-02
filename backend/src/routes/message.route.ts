@@ -6,6 +6,8 @@ import {
   editMessageController,
   getMessagesController,
   getPinnedMessagesController,
+  getReadStateController,
+  markRoomReadController,
   searchMessagesController,
   toggleMessageReactionController,
   togglePinMessageController,
@@ -22,8 +24,10 @@ const router = Router();
 router.get("/", authMiddleware, getMessagesController);
 router.get("/pinned", authMiddleware, getPinnedMessagesController);
 router.get("/search", authMiddleware, searchMessagesController);
+router.get("/read-state", authMiddleware, getReadStateController);
 router.post("/", authMiddleware, validateSchema(createMessageSchema), createMessageController);
 router.post("/clear", authMiddleware, clearMessagesController);
+router.post("/read", authMiddleware, markRoomReadController);
 router.patch(
   "/:id",
   authMiddleware,

@@ -23,10 +23,14 @@ export const authMiddleware = async (
 
     // заблокированный модератором пользователь теряет доступ сразу, не
     // дожидаясь истечения access-токена (он живёт 15 минут)
-    const result = await pool.query(`select is_blocked from users where id = $1`, [decoded.id]);
+    // is_admin берём тем же запросом — adminMiddleware не ходит в базу второй раз
+    const result = await pool.query(`select is_blocked, is_admin from users where id = $1`, [
+      decoded.id,
+    ]);
     if (result.rows[0]?.is_blocked) {
       return res.status(403).json({ message: "Аккаунт заблокирован" });
     }
+    (req as any).user.isAdmin = Boolean(result.rows[0]?.is_admin);
 
     next();
   } catch (error: any) {

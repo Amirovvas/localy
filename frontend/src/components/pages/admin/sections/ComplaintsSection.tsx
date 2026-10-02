@@ -18,6 +18,7 @@ import styles from "../adminTable.module.css";
 import css from "./complaintsSection.module.css";
 import { Avatar } from "@/components/layout/Avatar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { getApiErrorMessage } from "@/lib/apiError";
 import {
   REPORT_REASON_LABELS,
   REPORT_STATUS_LABELS,
@@ -138,9 +139,7 @@ const ComplaintsSection = () => {
   };
 
   const onActionError = (error: unknown) => {
-    const message = (error as { response?: { data?: { message?: string } } }).response?.data
-      ?.message;
-    setActionError(message ?? "Не удалось выполнить действие");
+    setActionError(getApiErrorMessage(error) ?? "Не удалось выполнить действие");
   };
 
   const setStatus = (id: number, status: ReportStatus) => {

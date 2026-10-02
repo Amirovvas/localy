@@ -7,6 +7,8 @@ interface ICreateBody {
   city: string;
   description?: string;
   status?: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 interface IUpdateBody {
@@ -15,6 +17,8 @@ interface IUpdateBody {
   city?: string;
   description?: string;
   status?: string;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 // обычным пользователям (регистрация, поиск) видны только "активные"
@@ -25,7 +29,7 @@ interface IUpdateBody {
 export const listCommunitiesService = async () => {
   const result = await pool.query(
     `
-    select id, name, category, city, description
+    select id, name, category, city, description, lat, lng
     from communities
     where status = 'active' and category != 'city'
     order by category, name
@@ -74,23 +78,69 @@ export const discoverCommunitiesService = async (
 
   const result = await pool.query(
     `
-    select c.id, c.name, c.category, c.city, c.description,
+    select c.id, c.name, c.category, c.city, c.description, c.lat, c.lng,
       (select count(*) from community_members cm2 where cm2.community_id = c.id) as members
     from communities c
     where ${where}
     order by c.category, c.name
-    limit 100
+    limit 1000
     `,
     params,
   );
   return result.rows;
 };
 
+// в этих категориях пользователь может состоять только в одном сообществе
+// (школ можно несколько, городской чат добавляется автоматически)
+const SINGLE_CHOICE_CATEGORIES: Record<string, string> = {
+  university: "университет, институт или колледж",
+  district: "район",
+  residential: "жилой комплекс",
+};
+
+// проверка списка при регистрации: из каждой "одиночной" категории — не больше одного
+export const assertSingleChoiceCategories = async (communityIds: number[]) => {
+  const result = await pool.query(
+    `
+    select category from communities
+    where id = any($1) and category = any($2)
+    group by category having count(*) > 1
+    `,
+    [communityIds, Object.keys(SINGLE_CHOICE_CATEGORIES)],
+  );
+  const category: string | undefined = result.rows[0]?.category;
+  if (category) {
+    throw apiErrors.badRequest(
+      `Можно выбрать только один вариант: ${SINGLE_CHOICE_CATEGORIES[category]}`,
+    );
+  }
+};
+
 // вступление идемпотентно: повторный запрос (двойной клик, вторая вкладка)
 // не падает с ошибкой уникальности, а просто возвращает то же сообщество
 export const joinCommunityService = async (communityId: number, userId: number) => {
-  const exists = await pool.query(`select id from communities where id = $1`, [communityId]);
+  const exists = await pool.query(`select id, category from communities where id = $1`, [
+    communityId,
+  ]);
   if (!exists.rows[0]) throw apiErrors.notFound("Сообщество не найдено");
+
+  const category: string = exists.rows[0].category;
+  if (SINGLE_CHOICE_CATEGORIES[category]) {
+    const other = await pool.query(
+      `
+      select 1 from community_members cm
+      join communities c on c.id = cm.community_id
+      where cm.user_id = $1 and c.category = $2 and c.id <> $3
+      limit 1
+      `,
+      [userId, category, communityId],
+    );
+    if (other.rows[0]) {
+      throw apiErrors.badRequest(
+        `Вы уже состоите в сообществе этой категории (${SINGLE_CHOICE_CATEGORIES[category]}) — сначала покиньте его`,
+      );
+    }
+  }
 
   await pool.query(
     `
@@ -163,7 +213,7 @@ export const listAdminCommunitiesService = async () => {
   const result = await pool.query(
     `
     select
-      c.id, c.name, c.category, c.city, c.description, c.status, c.created_at,
+      c.id, c.name, c.category, c.city, c.description, c.status, c.lat, c.lng, c.created_at,
       (select count(*) from community_members cm where cm.community_id = c.id) as members,
       coalesce((
         select json_agg(json_build_object('id', r.id, 'name', r.name) order by r.position, r.name)
@@ -181,11 +231,19 @@ export const createCommunityService = async (body: ICreateBody) => {
   try {
     const result = await pool.query(
       `
-      insert into communities (name, category, city, description, status)
-      values ($1, $2, $3, $4, coalesce($5, 'pending'))
-      returning id, name, category, city, description, status, created_at
+      insert into communities (name, category, city, description, status, lat, lng)
+      values ($1, $2, $3, $4, coalesce($5, 'pending'), $6, $7)
+      returning id, name, category, city, description, status, lat, lng, created_at
       `,
-      [body.name, body.category, body.city, body.description ?? "", body.status],
+      [
+        body.name,
+        body.category,
+        body.city,
+        body.description ?? "",
+        body.status,
+        body.lat ?? null,
+        body.lng ?? null,
+      ],
     );
     return result.rows[0];
   } catch (error: any) {
@@ -209,7 +267,7 @@ export const updateCommunityService = async (id: number, body: IUpdateBody) => {
       update communities
       set ${setClause}
       where id = $1
-      returning id, name, category, city, description, status, created_at
+      returning id, name, category, city, description, status, lat, lng, created_at
       `,
       [id, ...values],
     );

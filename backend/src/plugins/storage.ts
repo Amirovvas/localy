@@ -68,6 +68,22 @@ export const assertOwnAttachment = (attachment?: string) => {
   }
 };
 
+// удаляет файл из бакета по его публичной ссылке. Ошибки не пробрасываем:
+// сообщение к этому моменту уже удалено из БД, и из-за недоступного Storage
+// пользователь не должен получать ошибку
+export const removeImageByUrl = async (url: string) => {
+  try {
+    const prefix = publicUrlPrefix();
+    if (!prefix || !url.startsWith(prefix)) return;
+
+    const path = decodeURIComponent(url.slice(prefix.length));
+    const { error } = await getClient().storage.from(bucket()).remove([path]);
+    if (error) console.error("Не удалось удалить файл из Storage:", error.message);
+  } catch (error) {
+    console.error("Не удалось удалить файл из Storage:", error);
+  }
+};
+
 export const publicUrlPrefix = () => {
   const url = process.env.SUPABASE_URL;
   return url ? `${url.replace(/\/$/, "")}/storage/v1/object/public/${bucket()}/` : null;

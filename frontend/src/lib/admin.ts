@@ -22,6 +22,8 @@ export interface AdminCommunity {
   city: string;
   description: string;
   status: CommunityStatus;
+  lat: number | null;
+  lng: number | null;
   created_at: string;
   members: number;
   rooms: AdminCommunityRoom[];

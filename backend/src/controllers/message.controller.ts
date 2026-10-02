@@ -4,8 +4,10 @@ import {
   createMessageService,
   deleteMessageService,
   editMessageService,
+  getReadStateService,
   listMessagesService,
   listPinnedMessagesService,
+  markRoomReadService,
   searchMessagesService,
   togglePinMessageService,
 } from "../services/message.service";
@@ -118,6 +120,32 @@ export const searchMessagesController = async (
 
     const messages = await searchMessagesService(roomId, userId, query);
     res.status(200).json({ message: "search results", data: messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getReadStateController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const roomId = Number(req.query.roomId);
+    if (!roomId) throw apiErrors.badRequest("roomId is required");
+
+    const lastReadMessageId = await getReadStateService(roomId, userId);
+    res.status(200).json({ message: "read state", data: { lastReadMessageId } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markRoomReadController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const roomId = Number(req.query.roomId);
+    if (!roomId) throw apiErrors.badRequest("roomId is required");
+
+    await markRoomReadService(roomId, userId);
+    res.status(200).json({ message: "marked as read" });
   } catch (error) {
     next(error);
   }

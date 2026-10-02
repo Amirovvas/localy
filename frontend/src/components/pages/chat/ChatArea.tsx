@@ -34,6 +34,8 @@ import { useToggleReaction } from "@/hooks/messages/useToggleReaction";
 import { useTogglePin } from "@/hooks/messages/useTogglePin";
 import { usePinnedMessages } from "@/hooks/messages/usePinnedMessages";
 import { useSearchMessages } from "@/hooks/messages/useSearchMessages";
+import { useReadState } from "@/hooks/messages/useReadState";
+import { useMarkRoomRead } from "@/hooks/messages/useMarkRoomRead";
 import {
   ACCEPTED_IMAGE_TYPES,
   MAX_IMAGE_SIZE,
@@ -47,6 +49,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { ChatCommunityDetail, ChatMessage, ChatRoom } from "@/lib/chat";
 import { REACTION_EMOJIS } from "@/lib/chat";
 import { formatMembers } from "@/lib/format";
+import { getApiErrorMessage } from "@/lib/apiError";
 
 // библиотека эмодзи с русским словарём тяжёлая — грузим только при первом
 // открытии панели, а не в основной бандл чата
@@ -76,6 +79,18 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   // на телефоне своя системная клавиатура эмодзи — отдельная панель тут не нужна
   const isMobile = useIsMobile();
 
+  // "Непрочитанные сообщения": при входе в комнату считаем, где был маркер
+  // в прошлый раз, и один раз ставим разделитель + прокручиваем к нему
+  const {
+    data: lastReadMessageId,
+    isLoading: readStateLoading,
+    isFetching: readStateFetching,
+  } = useReadState(room.id);
+  const markRoomRead = useMarkRoomRead();
+  const [unreadDividerId, setUnreadDividerId] = useState<number | null>(null);
+  const messagesRef = useRef<HTMLDivElement>(null);
+  const hasInitializedReadRef = useRef(false);
+
   const sendMessage = useSendMessage();
   const isSending = sendMessage.isPending;
 
@@ -90,6 +105,8 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   // прикреплённое фото: сначала грузим в Storage, в сообщение уходит готовый URL
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
+  // ошибка отправки сообщения (лимит против спама, запрещённые слова)
+  const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadImage = useUploadImage();
   // панель эмодзи у поля ввода
@@ -134,6 +151,47 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     debouncedSearchQuery,
   );
 
+  // один раз при входе в комнату: ставим разделитель на первое непрочитанное
+  // сообщение и прокручиваем к нему (если непрочитанных нет — вниз, к последним)
+  useEffect(() => {
+    if (hasInitializedReadRef.current) return;
+    // readStateFetching — ждём, пока отметка прочитанного не станет
+    // актуальной (а не просто "не первая загрузка"), иначе можно на миг
+    // схватить устаревшее значение из кэша react-query и промахнуться
+    // с разделителем
+    if (messagesLoading || readStateLoading || readStateFetching) return;
+    hasInitializedReadRef.current = true;
+
+    // null (ещё ни разу не открывал комнату) считаем как "прочитано до 0" —
+    // тогда при самом первом заходе вся история тоже помечается непрочитанной.
+    // Свои же сообщения не могут быть "непрочитанными" — учитываем только чужие
+    const readMarker = lastReadMessageId ?? 0;
+    const firstUnread = messages.find(
+      (message) => message.id > readMarker && message.authorId !== currentUserAnonId,
+    );
+    setUnreadDividerId(firstUnread ? firstUnread.id : null);
+
+    requestAnimationFrame(() => {
+      if (firstUnread) {
+        document.getElementById(`msg-${firstUnread.id}`)?.scrollIntoView({ block: "start" });
+      } else if (messagesRef.current) {
+        messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+      }
+    });
+
+    markRoomRead.mutate(room.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messagesLoading, readStateLoading, readStateFetching]);
+
+  // и при выходе из комнаты — чтобы сообщения, пришедшие, пока здесь сидели,
+  // не считались непрочитанными при следующем заходе
+  useEffect(() => {
+    return () => {
+      markRoomRead.mutate(room.id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.id]);
+
   // "отметить сообщение как событие" — никакого автоопределения по тексту:
   // пользователь сам решает, что это реальный анонс, и сам вводит дату/время
   const [eventDraft, setEventDraft] = useState<{
@@ -165,8 +223,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   };
 
   const summaryError =
-    (summary.error as { response?: { data?: { message?: string } } } | null)?.response?.data
-      ?.message ?? "Не удалось получить сводку. Попробуйте позже.";
+    getApiErrorMessage(summary.error) ?? "Не удалось получить сводку. Попробуйте позже.";
 
   const handleSend = (event: React.FormEvent) => {
     event.preventDefault();
@@ -176,16 +233,35 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
 
     stopTyping();
 
-    sendMessage.mutate({
-      roomId: room.id,
-      text,
-      attachment: attachmentUrl ?? undefined,
-      replyToId: replyTo?.id,
-    });
+    setSendError(null);
+    sendMessage.mutate(
+      {
+        roomId: room.id,
+        text,
+        attachment: attachmentUrl ?? undefined,
+        replyToId: replyTo?.id,
+        authorId: currentUserAnonId,
+        replyToPreview: replyTo ?? undefined,
+      },
+      {
+        // сообщение не ушло — возвращаем текст в поле и объясняем причину
+        onError: (error) => {
+          setSendError(getApiErrorMessage(error) ?? "Не удалось отправить сообщение");
+          setDraft((current) => current || text);
+        },
+      },
+    );
     setDraft("");
     setReplyTo(null);
     setAttachmentUrl(null);
     setAttachError(null);
+
+    // прокручиваем вниз, чтобы своё отправленное сообщение сразу было видно
+    requestAnimationFrame(() => {
+      if (messagesRef.current) {
+        messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+      }
+    });
   };
 
   const openReport = (message: ChatMessage) => {
@@ -215,9 +291,9 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
       {
         onSuccess: () => setReportSent(true),
         onError: (error) => {
-          const message = (error as { response?: { data?: { message?: string } } }).response?.data
-            ?.message;
-          setReportError(message ?? "Не удалось отправить жалобу. Попробуйте ещё раз.");
+          setReportError(
+            getApiErrorMessage(error) ?? "Не удалось отправить жалобу. Попробуйте ещё раз.",
+          );
         },
       },
     );
@@ -242,9 +318,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     uploadImage.mutate(file, {
       onSuccess: (url) => setAttachmentUrl(url),
       onError: (error) => {
-        const message = (error as { response?: { data?: { message?: string } } }).response?.data
-          ?.message;
-        setAttachError(message ?? "Не удалось загрузить фото");
+        setAttachError(getApiErrorMessage(error) ?? "Не удалось загрузить фото");
       },
     });
   };
@@ -561,7 +635,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         </div>
       )}
 
-      <div className={css.messages}>
+      <div className={css.messages} ref={messagesRef}>
         {messagesLoading && messages.length === 0 && (
           <p className={css.emptyState}>Загрузка сообщений...</p>
         )}
@@ -575,193 +649,200 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           // свои сообщения — справа, чужие — слева (как в обычных мессенджерах)
           const isOwn = message.authorId === currentUserAnonId;
           return (
-            <div
-              key={message.id}
-              id={`msg-${message.id}`}
-              className={`${css.message} ${isOwn ? css.own : ""} ${
-                message.isAnnouncement ? css.announcement : ""
-              } ${highlightedId === message.id ? css.highlighted : ""}`}
-              onMouseLeave={() => setPickerFor((open) => (open === message.id ? null : open))}
-            >
-              <Avatar size={34} className={css.avatar} />
+            <div key={message.id}>
+              {unreadDividerId === message.id && (
+                <div className={css.unreadDivider}>
+                  <span>Непрочитанные сообщения</span>
+                </div>
+              )}
 
-              <div className={css.body}>
-                <div className={css.head}>
-                  <span className={css.author}>Аноним #{message.authorId}</span>
-                  <span className={css.time}>{message.time}</span>
-                  {message.isEdited && <span className={css.editedTag}>изменено</span>}
-                  {message.isPinned && <Pin size={11} className={css.pinnedTag} />}
-                  {message.isAnnouncement && (
-                    <span className={css.announceTag}>Официально</span>
+              <div
+                id={`msg-${message.id}`}
+                className={`${css.message} ${isOwn ? css.own : ""} ${
+                  message.isAnnouncement ? css.announcement : ""
+                } ${highlightedId === message.id ? css.highlighted : ""}`}
+                onMouseLeave={() => setPickerFor((open) => (open === message.id ? null : open))}
+              >
+                <Avatar size={34} className={css.avatar} />
+
+                <div className={css.body}>
+                  <div className={css.head}>
+                    <span className={css.author}>Аноним #{message.authorId}</span>
+                    <span className={css.time}>{message.time}</span>
+                    {message.isEdited && <span className={css.editedTag}>изменено</span>}
+                    {message.isPinned && <Pin size={11} className={css.pinnedTag} />}
+                    {message.isAnnouncement && (
+                      <span className={css.announceTag}>Официально</span>
+                    )}
+                  </div>
+
+                  {message.replyTo && (
+                    <button
+                      type="button"
+                      className={css.replyQuote}
+                      onClick={() => jumpToMessage(message.replyTo!.id)}
+                    >
+                      <CornerUpLeft size={12} className={css.replyQuoteIcon} />
+                      <span className={css.replyQuoteAuthor}>
+                        Аноним #{message.replyTo.authorId}
+                      </span>
+                      <span className={css.replyQuoteText}>{message.replyTo.text}</span>
+                    </button>
+                  )}
+
+                  {message.attachment && (
+                    <a
+                      href={message.attachment}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={css.imageLink}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={message.attachment}
+                        alt="Фото из чата"
+                        className={css.messageImage}
+                        loading="lazy"
+                      />
+                    </a>
+                  )}
+
+                  {editingId === message.id ? (
+                    <div className={css.editBox}>
+                      <textarea
+                        className={css.editInput}
+                        value={editDraft}
+                        onChange={(event) => setEditDraft(event.target.value)}
+                        rows={2}
+                        autoFocus
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            handleSaveEdit();
+                          }
+                          if (event.key === "Escape") cancelEdit();
+                        }}
+                      />
+                      <div className={css.editActions}>
+                        <button type="button" className={css.editCancel} onClick={cancelEdit}>
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          className={css.editSave}
+                          onClick={handleSaveEdit}
+                          disabled={!editDraft.trim() || editMessage.isPending}
+                        >
+                          {editMessage.isPending ? "Сохраняем..." : "Сохранить"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    message.text && <p className={css.text}>{message.text}</p>
+                  )}
+
+                  {reactions.length > 0 && (
+                    <div className={css.reactions}>
+                      {reactions.map((reaction) => (
+                        <button
+                          key={reaction.emoji}
+                          type="button"
+                          className={`${css.reaction} ${reaction.mine ? css.reactionMine : ""}`}
+                          onClick={() => handleReact(message.id, reaction.emoji)}
+                        >
+                          <span>{reaction.emoji}</span>
+                          <span>{reaction.count}</span>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                {message.replyTo && (
-                  <button
-                    type="button"
-                    className={css.replyQuote}
-                    onClick={() => jumpToMessage(message.replyTo!.id)}
-                  >
-                    <CornerUpLeft size={12} className={css.replyQuoteIcon} />
-                    <span className={css.replyQuoteAuthor}>
-                      Аноним #{message.replyTo.authorId}
-                    </span>
-                    <span className={css.replyQuoteText}>{message.replyTo.text}</span>
-                  </button>
-                )}
-
-                {message.attachment && (
-                  <a
-                    href={message.attachment}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={css.imageLink}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={message.attachment}
-                      alt="Фото из чата"
-                      className={css.messageImage}
-                      loading="lazy"
-                    />
-                  </a>
-                )}
-
-                {editingId === message.id ? (
-                  <div className={css.editBox}>
-                    <textarea
-                      className={css.editInput}
-                      value={editDraft}
-                      onChange={(event) => setEditDraft(event.target.value)}
-                      rows={2}
-                      autoFocus
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" && !event.shiftKey) {
-                          event.preventDefault();
-                          handleSaveEdit();
-                        }
-                        if (event.key === "Escape") cancelEdit();
-                      }}
-                    />
-                    <div className={css.editActions}>
-                      <button type="button" className={css.editCancel} onClick={cancelEdit}>
-                        Отмена
-                      </button>
-                      <button
-                        type="button"
-                        className={css.editSave}
-                        onClick={handleSaveEdit}
-                        disabled={!editDraft.trim() || editMessage.isPending}
-                      >
-                        {editMessage.isPending ? "Сохраняем..." : "Сохранить"}
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  message.text && <p className={css.text}>{message.text}</p>
-                )}
-
-                {reactions.length > 0 && (
-                  <div className={css.reactions}>
-                    {reactions.map((reaction) => (
-                      <button
-                        key={reaction.emoji}
-                        type="button"
-                        className={`${css.reaction} ${reaction.mine ? css.reactionMine : ""}`}
-                        onClick={() => handleReact(message.id, reaction.emoji)}
-                      >
-                        <span>{reaction.emoji}</span>
-                        <span>{reaction.count}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div
-                className={`${css.hoverActions} ${
-                  pickerFor === message.id ? css.hoverActionsOpen : ""
-                }`}
-              >
-                <button
-                  type="button"
-                  className={css.hoverBtn}
-                  title="Реакция"
-                  onClick={() => setPickerFor((open) => (open === message.id ? null : message.id))}
+                <div
+                  className={`${css.hoverActions} ${
+                    pickerFor === message.id ? css.hoverActionsOpen : ""
+                  }`}
                 >
-                  <Smile size={14} />
-                </button>
-                <button
-                  type="button"
-                  className={css.hoverBtn}
-                  title="Ответить"
-                  onClick={() => startReply(message)}
-                >
-                  <Reply size={14} />
-                </button>
-                <button
-                  type="button"
-                  className={css.hoverBtn}
-                  title="Отметить как событие"
-                  onClick={() =>
-                    setEventDraft({ title: message.text, place: "", startsAt: "" })
-                  }
-                >
-                  <CalendarPlus size={14} />
-                </button>
-                <button
-                  type="button"
-                  className={css.hoverBtn}
-                  data-active={message.isPinned}
-                  title={message.isPinned ? "Открепить" : "Закрепить"}
-                  onClick={() => handleTogglePin(message)}
-                >
-                  {message.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-                </button>
-                {isOwn ? (
-                  <>
-                    <button
-                      type="button"
-                      className={css.hoverBtn}
-                      title="Редактировать"
-                      onClick={() => startEdit(message)}
-                    >
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className={css.hoverBtn}
-                      title="Удалить"
-                      onClick={() => setDeleteTarget(message)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </>
-                ) : (
                   <button
                     type="button"
                     className={css.hoverBtn}
-                    title="Пожаловаться"
-                    onClick={() => openReport(message)}
+                    title="Реакция"
+                    onClick={() => setPickerFor((open) => (open === message.id ? null : message.id))}
                   >
-                    <Flag size={14} />
+                    <Smile size={14} />
                   </button>
-                )}
-
-                {pickerFor === message.id && (
-                  <div className={css.reactionPicker}>
-                    {REACTION_EMOJIS.map((emoji) => (
+                  <button
+                    type="button"
+                    className={css.hoverBtn}
+                    title="Ответить"
+                    onClick={() => startReply(message)}
+                  >
+                    <Reply size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className={css.hoverBtn}
+                    title="Отметить как событие"
+                    onClick={() =>
+                      setEventDraft({ title: message.text, place: "", startsAt: "" })
+                    }
+                  >
+                    <CalendarPlus size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className={css.hoverBtn}
+                    data-active={message.isPinned}
+                    title={message.isPinned ? "Открепить" : "Закрепить"}
+                    onClick={() => handleTogglePin(message)}
+                  >
+                    {message.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
+                  </button>
+                  {isOwn ? (
+                    <>
                       <button
-                        key={emoji}
                         type="button"
-                        className={css.reactionPickerBtn}
-                        onClick={() => handleReact(message.id, emoji)}
+                        className={css.hoverBtn}
+                        title="Редактировать"
+                        onClick={() => startEdit(message)}
                       >
-                        {emoji}
+                        <Pencil size={14} />
                       </button>
-                    ))}
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        className={css.hoverBtn}
+                        title="Удалить"
+                        onClick={() => setDeleteTarget(message)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className={css.hoverBtn}
+                      title="Пожаловаться"
+                      onClick={() => openReport(message)}
+                    >
+                      <Flag size={14} />
+                    </button>
+                  )}
+
+                  {pickerFor === message.id && (
+                    <div className={css.reactionPicker}>
+                      {REACTION_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          className={css.reactionPickerBtn}
+                          onClick={() => handleReact(message.id, emoji)}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -799,7 +880,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         </div>
       )}
 
-      {(attachmentUrl || uploadImage.isPending || attachError) && (
+      {(attachmentUrl || uploadImage.isPending || attachError || sendError) && (
         <div className={css.attachPreview}>
           {uploadImage.isPending && (
             <span className={css.attachStatus}>
@@ -827,6 +908,8 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           {attachError && !uploadImage.isPending && (
             <span className={css.attachError}>{attachError}</span>
           )}
+
+          {sendError && <span className={css.attachError}>{sendError}</span>}
         </div>
       )}
 

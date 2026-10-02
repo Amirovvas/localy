@@ -7,6 +7,9 @@ export interface ChatCommunity {
   city: string;
   description: string;
   members: number;
+  // координаты для сортировки "рядом со мной"; у части мест их может не быть
+  lat?: number | null;
+  lng?: number | null;
 }
 
 export interface ChatRoom {

@@ -7,6 +7,7 @@ import css from "./login.module.css";
 import { LogoMark } from "@/components/layout/Logo";
 import { useLogin } from "@/hooks/auth/useLogin";
 import { HOME_AFTER_LOGIN } from "@/lib/routes";
+import { getApiErrorMessage } from "@/lib/apiError";
 
 interface FormValues {
   email: string;
@@ -29,9 +30,7 @@ const Login = () => {
     });
   };
 
-  const serverError = (loginMutation.error as any)?.response?.data?.message as
-    | string
-    | undefined;
+  const serverError = getApiErrorMessage(loginMutation.error);
 
   return (
     <div className={css.container}>

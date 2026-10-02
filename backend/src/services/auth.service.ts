@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { generateTokens, refresh_secret } from "../utils/generateTokens";
 import { apiErrors } from "../utils/apiErrors";
 import { generateUniqueAnonId } from "../utils/anonId";
+import { assertSingleChoiceCategories } from "./community.service";
 
 interface IRegisterBody {
   name: string;
@@ -19,6 +20,7 @@ interface ILoginBody {
 }
 
 export const registerService = async (body: IRegisterBody) => {
+  await assertSingleChoiceCategories(body.communityIds);
   const hashedPassword = await bcrypt.hash(body.password, 9);
 
   // создание пользователя и его членства в сообществах — одна транзакция:

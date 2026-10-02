@@ -9,6 +9,8 @@ interface RawCommunity {
   city: string;
   description: string;
   members: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 interface IResponse {
@@ -23,6 +25,8 @@ export const mapCommunity = (c: RawCommunity): ChatCommunity => ({
   city: c.city,
   description: c.description,
   members: Number(c.members),
+  lat: c.lat,
+  lng: c.lng,
 });
 
 // сообщества, в которых пользователя ещё нет (окно "Присоединиться")

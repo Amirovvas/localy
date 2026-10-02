@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { generateUniqueAnonId } from "../utils/anonId";
+import { PLACES } from "../data/places";
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -159,6 +160,19 @@ pool.connect().then(async () => {
       on messages(room_id, pinned_at) where pinned_at is not null
   `);
 
+  // "прочитано до сообщения №": по этой отметке при входе в комнату считаем,
+  // где поставить разделитель "Непрочитанные сообщения" и куда прокрутить.
+  // Нет записи — пользователь ещё ни разу не открывал комнату, разделитель
+  // в этом случае не показываем (не с чем сравнивать)
+  await pool.query(`
+    create table if not exists room_reads (
+      user_id integer not null references users(id) on delete cascade,
+      room_id integer not null references rooms(id) on delete cascade,
+      last_read_message_id integer not null default 0,
+      primary key (user_id, room_id)
+    )
+  `);
+
   // реакции: один пользователь — одна запись на (сообщение, эмодзи), повторный
   // клик снимает реакцию
   await pool.query(`
@@ -243,6 +257,30 @@ pool.connect().then(async () => {
     )
   `);
 
+  // индексы под самые частые запросы (все идемпотентные):
+  // - счётчики участников сообщества (count по community_id; unique начинается с user_id)
+  // - max(id) / "прочитано до" по комнате
+  // - ответы (on delete set null ищет сообщения по reply_to_id) и сообщения автора
+  // - проверка "эту картинку ещё кто-то использует" при удалении сообщения
+  await pool.query(`
+    create index if not exists community_members_community_id_idx on community_members(community_id)
+  `);
+  await pool.query(`
+    create index if not exists messages_room_id_id_idx on messages(room_id, id)
+  `);
+  await pool.query(`
+    create index if not exists messages_reply_to_id_idx on messages(reply_to_id) where reply_to_id is not null
+  `);
+  await pool.query(`
+    create index if not exists messages_user_id_idx on messages(user_id)
+  `);
+  await pool.query(`
+    create index if not exists messages_attachment_idx on messages(attachment) where attachment is not null
+  `);
+  await pool.query(`
+    create index if not exists message_reactions_user_id_idx on message_reactions(user_id)
+  `);
+
   // "timestamp without time zone" хранит наивное значение: при записи оно
   // молча приводится к wall-clock текущей сессии (у нас UTC), а вот
   // node-postgres при ЧТЕНИИ такой колонки интерпретирует её как локальное
@@ -252,32 +290,35 @@ pool.connect().then(async () => {
   // все datetime-колонки один раз; для уже timestamptz-колонок операция
   // идемпotентна (AT TIME ZONE 'UTC' на timestamptz -> naive UTC -> обратно
   // в timestamptz даёт тот же instant)
-  await pool.query(`
-    alter table users
-      alter column created_at type timestamptz using created_at at time zone 'UTC',
-      alter column updated_at type timestamptz using updated_at at time zone 'UTC'
-  `);
-  await pool.query(`
-    alter table communities
-      alter column created_at type timestamptz using created_at at time zone 'UTC'
-  `);
-  await pool.query(`
-    alter table community_members
-      alter column joined_at type timestamptz using joined_at at time zone 'UTC'
-  `);
-  await pool.query(`
-    alter table rooms
-      alter column created_at type timestamptz using created_at at time zone 'UTC'
-  `);
-  await pool.query(`
-    alter table events
-      alter column starts_at type timestamptz using starts_at at time zone 'UTC',
-      alter column created_at type timestamptz using created_at at time zone 'UTC'
-  `);
-  await pool.query(`
-    alter table messages
-      alter column created_at type timestamptz using created_at at time zone 'UTC'
-  `);
+  // alter ... using перезаписывает всю таблицу под блокировкой, поэтому делаем
+  // его только для тех колонок, которые ещё остались "without time zone" —
+  // на уже сконвертированной базе при каждом запуске сервера ничего не меняется
+  const dateColumns = [
+    ["users", "created_at"],
+    ["users", "updated_at"],
+    ["communities", "created_at"],
+    ["community_members", "joined_at"],
+    ["rooms", "created_at"],
+    ["events", "starts_at"],
+    ["events", "created_at"],
+    ["messages", "created_at"],
+  ];
+  const oldDateColumns = await pool.query(
+    `
+    select table_name, column_name from information_schema.columns
+    where table_schema = 'public' and data_type = 'timestamp without time zone'
+    `,
+  );
+  for (const [table, column] of dateColumns) {
+    const isOld = oldDateColumns.rows.some(
+      (row) => row.table_name === table && row.column_name === column,
+    );
+    if (isOld) {
+      await pool.query(
+        `alter table ${table} alter column ${column} type timestamptz using ${column} at time zone 'UTC'`,
+      );
+    }
+  }
   // локации в чате больше не нужны — чистим таблицы, если они остались
   // с прошлой версии базы (cascade заодно удаляет их сообщения и реакции)
   await pool.query(`drop table if exists location_messages cascade`);
@@ -375,6 +416,30 @@ pool.connect().then(async () => {
       ('Ленинский район', 'district', 'Бишкек', 'Официальное сообщество для жителей Ленинского района.')
     on conflict (name) do nothing
   `);
+  // координаты нужны уже здесь (вставка мест ниже); повторное объявление ниже безвредно
+  await pool.query(`alter table communities add column if not exists lat double precision`);
+  await pool.query(`alter table communities add column if not exists lng double precision`);
+
+  // школы, вузы, микрорайоны, жилмассивы и ЖК Бишкека с координатами (список в
+  // data/places.ts). on conflict do nothing — уже существующие сообщества и
+  // поправленные вручную координаты не трогаем; комнаты им создаёт шаблон ниже
+  await pool.query(
+    `
+    insert into communities (name, category, city, description, lat, lng)
+    select p.name, p.category, 'Бишкек',
+      case p.category
+        when 'school' then 'Сообщество учеников, родителей и учителей — ' || p.name || '.'
+        when 'university' then 'Сообщество студентов и сотрудников — ' || p.name || '.'
+        when 'district' then 'Сообщество жителей — ' || p.name || '.'
+        else 'Сообщество жильцов — ' || p.name || '.'
+      end,
+      p.lat, p.lng
+    from unnest($1::text[], $2::text[], $3::float8[], $4::float8[]) as p(name, category, lat, lng)
+    on conflict (name) do nothing
+    `,
+    [PLACES.map((p) => p[0]), PLACES.map((p) => p[1]), PLACES.map((p) => p[2]), PLACES.map((p) => p[3])],
+  );
+
   // те же 5 комнат, что у AUCA — общий шаблон, подходит для новых сообществ
   // (для городских чатов, category='city', отдельно заведена одна комната
   // "общее" выше — их этот шаблон намеренно не трогает)
@@ -412,8 +477,13 @@ pool.connect().then(async () => {
   `);
   await pool.query(`
     insert into rooms (community_id, name, description, position)
-    select c.id, 'общее', 'Общий чат для всех жителей города ' || c.name || '.', 0
+    select c.id, r.name, replace(r.description, '{city}', c.name), r.position
     from communities c
+    join (values
+      ('общее', 'Общий чат для всех жителей города {city}.', 0),
+      ('объявления', 'Официальные объявления и новости города {city}.', 1),
+      ('события', 'Городские мероприятия, ярмарки и концерты — город {city}.', 2)
+    ) as r(name, description, position) on true
     where c.category = 'city'
     on conflict (community_id, name) do nothing
   `);
@@ -425,6 +495,65 @@ pool.connect().then(async () => {
     from users u
     join communities c on c.category = 'city' and c.name = u.city
     on conflict (user_id, community_id) do nothing
+  `);
+
+  // координаты сообществ — нужны для рекомендаций "рядом со мной" (расстояние
+  // считает фронтенд в браузере). Без координат сообщество просто не получает
+  // расстояния и показывается после остальных. Значения примерные (центр района,
+  // здание вуза/школы); поправить или добавить можно в Admin Panel
+  await pool.query(`alter table communities add column if not exists lat double precision`);
+  await pool.query(`alter table communities add column if not exists lng double precision`);
+  // where c.lat is null — не затираем координаты, которые уже поправили вручную
+  await pool.query(`
+    update communities c set lat = g.lat, lng = g.lng
+    from (values
+      ('AUCA', 42.81169, 74.62708),
+      ('КРСУ', 42.87341, 74.61407),
+      ('КНУ им. Ж. Баласагына', 42.88132, 74.58892),
+      ('КГМА им. И.К. Ахунбаева', 42.84215, 74.60686),
+      ('КЭУ им. М. Рыскулбекова', 42.82126, 74.62508),
+      ('МУК', 42.87717, 74.58527),
+      ('Кыргызско-Турецкий университет «Манас»', 42.83503, 74.57589),
+      ('Университет «Ала-Тоо»', 42.85574, 74.67773),
+      ('Кыргызская национальная консерватория им. Т. Сатылганова', 42.84579, 74.61283),
+      ('Финансово-экономический колледж при КЭУ', 42.82126, 74.62508),
+      ('Медицинский колледж КГМА', 42.84215, 74.60686),
+      ('КГТУ им. И. Раззакова', 42.84423, 74.58905),
+      ('Политехнический колледж КГТУ', 42.84423, 74.58905),
+      ('БГУ им. К. Карасаева', 42.85035, 74.58508),
+      ('КГЮА', 42.87636, 74.57977),
+      ('Кыргызско-турецкая гимназия «Сапат»', 42.81552, 74.63876),
+      -- ниже — ПРИБЛИЗИТЕЛЬНЫЕ точки (места не нашлись на карте), просто в нужной
+      -- части Бишкека; точные координаты можно ввести в Admin Panel
+      ('Гимназия №1', 42.8745, 74.6020),
+      ('Гимназия №13', 42.8560, 74.5920),
+      ('Гимназия №28', 42.8830, 74.6100),
+      ('Английская гимназия №2', 42.8690, 74.5990),
+      ('Гимназия «Билим-Компьютер»', 42.8600, 74.6300),
+      ('Лицей-школа №61', 42.8700, 74.5500),
+      ('ЖК «Скай Парк»', 42.8350, 74.6050),
+      ('ЖК «Гагарин Резиденс»', 42.8440, 74.6220),
+      ('ЖК «Golden Park»', 42.8300, 74.5900),
+      ('ЖК «Verona»', 42.8800, 74.5700),
+      ('ЖК «Асман Парк»', 42.8200, 74.6100),
+      ('ЖК «Достук Резиденс»', 42.8630, 74.6200),
+      ('ЖК «Каскад»', 42.8530, 74.6050),
+      ('ЖК «Кристалл»', 42.8750, 74.6150),
+      ('ЖК «Радуга»', 42.8860, 74.5900),
+      ('ЖК «Элит Хаус»', 42.8480, 74.5750),
+      ('ЖК «Ынтымак»', 42.8250, 74.5800),
+      ('Гимназия №70', 42.86814, 74.58910),
+      ('Гимназия №5', 42.87098, 74.61397),
+      ('Гимназия №24', 42.87392, 74.60850),
+      ('Bishkek International School', 42.85389, 74.58041),
+      ('Silk Road International School', 42.81727, 74.62989),
+      ('Октябрьский район', 42.85116, 74.61548),
+      ('Первомайский район', 42.89657, 74.58041),
+      ('Свердловский район', 42.84000, 74.58000),
+      ('Ленинский район', 42.87000, 74.57000),
+      ('ЖК «Мегаполис»', 42.82199, 74.59586)
+    ) as g(name, lat, lng)
+    where c.name = g.name and c.lat is null
   `);
 
   // сид событий — starts_at считается от полуночи (UTC) "сегодня" + смещение

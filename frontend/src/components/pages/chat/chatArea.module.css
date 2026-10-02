@@ -521,6 +521,32 @@
   text-align: center;
 }
 
+/* =========================
+   UNREAD DIVIDER
+========================= */
+
+.unreadDivider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  margin: 4px 0 14px;
+
+  color: var(--loc-accent);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.unreadDivider::before,
+.unreadDivider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--loc-accent-soft);
+}
+
 .message {
   position: relative;
 

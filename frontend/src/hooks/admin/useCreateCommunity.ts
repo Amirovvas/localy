@@ -9,6 +9,8 @@ interface IBody {
   city: string;
   description: string;
   status: CommunityStatus;
+  lat: number | null;
+  lng: number | null;
 }
 
 export const useCreateCommunity = () => {

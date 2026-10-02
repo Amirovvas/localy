@@ -7,7 +7,11 @@ import Modal from "@/components/ui/Modal";
 import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import { useDiscoverCommunities } from "@/hooks/communities/useDiscoverCommunities";
 import { useJoinCommunity } from "@/hooks/communities/useJoinCommunity";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import NearMeButton from "@/components/ui/NearMeButton";
 import { formatMembers } from "@/lib/format";
+import { formatDistance, sortByDistance } from "@/lib/geo";
+import { getApiErrorMessage } from "@/lib/apiError";
 import { COMMUNITY_CATEGORY_LABELS, type CommunityCategory } from "@/lib/mockData";
 
 interface IProps {
@@ -37,14 +41,20 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
   } = useDiscoverCommunities(debouncedSearch, category);
   const joinCommunity = useJoinCommunity();
 
+  // после разрешения геолокации список сортируется по расстоянию от пользователя
+  const { coords, status: locationStatus, requestLocation } = useUserLocation();
+  const sortedCommunities = communities ? sortByDistance(communities, coords) : undefined;
+
   const handleJoin = (communityId: number) => {
     setError(null);
     setJoiningId(communityId);
     joinCommunity.mutate(communityId, {
       onSuccess: () => onJoined(communityId),
-      onError: () => {
+      onError: (err) => {
         setJoiningId(null);
-        setError("Не удалось вступить в сообщество. Попробуйте ещё раз.");
+        setError(
+          getApiErrorMessage(err) ?? "Не удалось вступить в сообщество. Попробуйте ещё раз.",
+        );
       },
     });
   };
@@ -67,6 +77,10 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
           onChange={(event) => setSearch(event.target.value)}
           autoFocus
         />
+      </div>
+
+      <div className={css.nearMe}>
+        <NearMeButton status={locationStatus} onClick={requestLocation} />
       </div>
 
       <div className={css.chips}>
@@ -105,7 +119,7 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
           </p>
         )}
 
-        {communities?.map((item) => (
+        {sortedCommunities?.map((item) => (
           <div key={item.id} className={css.row}>
             <span className={css.rowIcon}>
               <CommunityIcon category={item.category} size={16} />
@@ -116,6 +130,7 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
               <span className={css.rowMeta}>
                 {COMMUNITY_CATEGORY_LABELS[item.category]} · {item.city} ·{" "}
                 {formatMembers(item.members)}
+                {item.distance !== null && ` · ${formatDistance(item.distance)} от вас`}
               </span>
               {item.description && <span className={css.rowDescription}>{item.description}</span>}
             </div>
