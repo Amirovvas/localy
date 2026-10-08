@@ -9,8 +9,6 @@ interface IResponse {
 export const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-// загружает фото в Supabase Storage через backend (POST /uploads/image) и
-// возвращает публичный URL, который затем уходит в messages.attachment
 export const useUploadImage = () =>
   useMutation({
     mutationFn: async (file: File) => {

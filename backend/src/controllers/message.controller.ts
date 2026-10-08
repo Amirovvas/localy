@@ -7,6 +7,7 @@ import {
   getReadStateService,
   listMessagesService,
   listPinnedMessagesService,
+  listUnreadCountsService,
   markRoomReadService,
   searchMessagesService,
   togglePinMessageService,
@@ -25,6 +26,16 @@ export const getMessagesController = async (req: Request, res: Response, next: N
 
     const messages = await listMessagesService(roomId, userId, limit, before);
     res.status(200).json({ message: "messages", data: messages });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUnreadCountsController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = (req as any).user.id;
+    const counts = await listUnreadCountsService(userId);
+    res.status(200).json({ message: "unread", data: counts });
   } catch (error) {
     next(error);
   }

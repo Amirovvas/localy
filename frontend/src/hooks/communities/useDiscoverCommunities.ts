@@ -29,13 +29,10 @@ export const mapCommunity = (c: RawCommunity): ChatCommunity => ({
   lng: c.lng,
 });
 
-// сообщества, в которых пользователя ещё нет (окно "Присоединиться")
 export const useDiscoverCommunities = (search: string, category: string | null) =>
   useQuery({
     queryKey: ["communities", "discover", search, category],
     placeholderData: keepPreviousData,
-    // список не кэшируем после закрытия окна: иначе при следующем открытии на
-    // кадр мелькнуло бы сообщество, в которое пользователь только что вступил
     gcTime: 0,
     queryFn: async () => {
       const res = await api.get<IResponse>("/communities/discover", {

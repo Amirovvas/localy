@@ -9,7 +9,6 @@ interface IBody {
   text: string;
   attachment?: string;
   replyToId?: number;
-  // нужны только для оптимистичного сообщения в кэше — на сервер не уходят
   authorId: number;
   replyToPreview?: ChatReplyPreview;
 }
@@ -28,8 +27,6 @@ export const useSendMessage = () => {
       const res = await api.post<IResponse>("/messages", payload);
       return res.data.data;
     },
-    // показываем сообщение в чате сразу, не дожидаясь ответа сервера —
-    // отправка иначе ощущается медленной из-за сетевой задержки
     onMutate: async (body) => {
       const tempId = -Date.now();
       const optimistic: ChatMessage = {
@@ -50,8 +47,6 @@ export const useSendMessage = () => {
       const message = mapMessage(raw);
       queryClient.setQueryData<ChatMessage[]>(["messages", variables.roomId], (prev) => {
         if (!prev) return [message];
-        // убираем временное сообщение и не дублируем, если сокет уже успел
-        // доставить это же сообщение раньше, чем резолвился сам HTTP-ответ
         const withoutOptimistic = prev.filter((existing) => existing.id !== context?.tempId);
         if (withoutOptimistic.some((existing) => existing.id === message.id)) {
           return withoutOptimistic;

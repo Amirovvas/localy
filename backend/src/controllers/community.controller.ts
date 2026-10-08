@@ -6,11 +6,25 @@ import {
   leaveCommunityService,
   deleteCommunityService,
   getCommunityService,
+  getPublicStatsService,
   listAdminCommunitiesService,
   listCommunitiesService,
   listMyCommunitiesService,
   updateCommunityService,
 } from "../services/community.service";
+
+export const getPublicStatsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const stats = await getPublicStatsService();
+    res.status(200).json({ message: "stats", data: stats });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const getCommunitiesController = async (
   req: Request,

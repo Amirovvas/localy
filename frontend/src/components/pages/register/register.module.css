@@ -10,10 +10,6 @@
   background: var(--loc-bg);
 }
 
-/* =========================
-   BRAND
-========================= */
-
 .brand {
   display: flex;
   align-items: center;
@@ -26,10 +22,6 @@
   font-size: 15px;
   font-weight: 700;
 }
-
-/* =========================
-   MAIN CARD
-========================= */
 
 .mainContainer {
   width: 100%;
@@ -48,10 +40,6 @@
     0 4px 6px rgba(0, 0, 0, 0.03),
     0 15px 35px rgba(0, 0, 0, 0.06);
 }
-
-/* =========================
-   HEADER
-========================= */
 
 .formSection h1 {
   margin: 0 0 8px;
@@ -75,10 +63,6 @@
   font-size: 14px;
   line-height: 1.5;
 }
-
-/* =========================
-   FORM
-========================= */
 
 .form {
   display: flex;
@@ -178,10 +162,6 @@
   color: var(--loc-text-tertiary);
 }
 
-/* =========================
-   SECTION DIVIDER
-========================= */
-
 .divider {
   display: flex;
   align-items: center;
@@ -210,10 +190,6 @@
   font-size: 12px;
   line-height: 1.5;
 }
-
-/* =========================
-   BUTTON
-========================= */
 
 .button {
   width: 100%;
@@ -245,10 +221,6 @@
   transform: scale(0.98);
 }
 
-/* =========================
-   HINT
-========================= */
-
 .hint {
   display: flex;
   gap: 8px;
@@ -274,10 +246,6 @@
   font-size: 12px;
   line-height: 1.5;
 }
-
-/* =========================
-   LOGIN LINK
-========================= */
 
 .loginText {
   margin-top: 18px !important;
@@ -306,9 +274,239 @@
   text-decoration: underline;
 }
 
-/* =========================
-   MOBILE
-========================= */
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  margin-bottom: 22px;
+}
+
+.progressBars {
+  display: flex;
+  gap: 6px;
+}
+
+.progressBar {
+  flex: 1;
+  height: 4px;
+
+  border-radius: 999px;
+  background: var(--loc-border);
+
+  transition: background 0.25s ease;
+}
+
+.progressBar[data-done="true"] {
+  background: var(--loc-accent);
+}
+
+.progressLabel {
+  color: var(--loc-text-tertiary);
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepPanel {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stepPanel[data-active="true"] {
+  display: flex;
+}
+
+.autoCity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  margin: 0;
+
+  color: var(--loc-success);
+
+  font-size: 13px;
+}
+
+.nearby {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nearbyTitle {
+  color: var(--loc-text);
+
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nearbyList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.nearbyChip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+
+  min-width: 0;
+  padding: 10px 12px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface);
+  color: var(--loc-text);
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.nearbyChip:hover {
+  border-color: var(--loc-accent);
+}
+
+.nearbyChip[data-selected="true"] {
+  border-color: var(--loc-accent);
+  background: var(--loc-accent-soft);
+}
+
+.nearbyName {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+
+  overflow-wrap: anywhere;
+
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.nearbyMeta {
+  color: var(--loc-text-tertiary);
+
+  font-size: 11.5px;
+  line-height: 1.3;
+}
+
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  padding: 12px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-surface-soft);
+}
+
+.summaryHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.summaryTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  color: var(--loc-text);
+
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  padding: 4px 6px;
+
+  border: none;
+  background: transparent;
+  color: var(--loc-accent);
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.summaryTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.summaryTag {
+  padding: 4px 10px;
+
+  border-radius: 999px;
+  background: var(--loc-accent-soft);
+  color: var(--loc-accent-hover);
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.navRow {
+  display: flex;
+  gap: 10px;
+
+  margin-top: 4px;
+}
+
+.navRow .button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+
+  margin-top: 0;
+  min-height: 46px;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  min-height: 46px;
+  padding: 0 18px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: transparent;
+  color: var(--loc-text);
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.backButton:hover:not(:disabled) {
+  border-color: var(--loc-accent);
+}
 
 @media (max-width: 560px) {
   .formRow {

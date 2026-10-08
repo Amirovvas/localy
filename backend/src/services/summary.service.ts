@@ -1,15 +1,12 @@
 import { pool } from "../plugins/pg";
 import { apiErrors } from "../utils/apiErrors";
 
-const MAX_MESSAGES = 500; // сколько последних сообщений отправляем в Gemini
-const MIN_MESSAGES = 5; // меньше — сводка не имеет смысла
-const MAX_PER_HOUR = 5; // сколько сводок один пользователь может запросить за час
+const MAX_MESSAGES = 500;
+const MIN_MESSAGES = 5;
+const MAX_PER_HOUR = 5;
 
-// Готовые сводки храним в памяти. Пока в чате нет новых сообщений, повторно
-// в Gemini не ходим. После перезапуска сервера кэш пропадает — для начала это нормально
 const cache = new Map<number, { lastMessageId: number; summary: string; messageCount: number }>();
 
-// Когда пользователь запрашивал сводки (userId -> список времён)
 const requestTimes = new Map<number, number[]>();
 
 const SYSTEM_PROMPT = `Ты помощник в анонимном чате сообщества.
@@ -21,7 +18,6 @@ const SYSTEM_PROMPT = `Ты помощник в анонимном чате со
 - какие вопросы остались без ответа.
 Пиши простым текстом, каждый пункт с новой строки и с символа "-". Без заголовков и без markdown.`;
 
-// Проверяем, что пользователь не запрашивает сводки слишком часто
 const checkLimit = (userId: number) => {
   const oneHourAgo = Date.now() - 60 * 60 * 1000;
   const times = (requestTimes.get(userId) || []).filter((time) => time > oneHourAgo);
@@ -34,8 +30,6 @@ const checkLimit = (userId: number) => {
   requestTimes.set(userId, times);
 };
 
-// Отправляем текст переписки в Gemini и возвращаем сводку.
-// Если основная модель перегружена (429/503), пробуем облегчённую
 const askGemini = async (chatText: string) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw apiErrors.unavailable("AI Summary не настроен на сервере");
@@ -57,7 +51,6 @@ const askGemini = async (chatText: string) => {
 
     if (response.ok) {
       const data: any = await response.json();
-      // ответ модели приходит частями — склеиваем их в один текст
       const parts: any[] = data.candidates?.[0]?.content?.parts || [];
       const summary = parts
         .map((part) => part.text || "")
@@ -67,10 +60,8 @@ const askGemini = async (chatText: string) => {
       return summary;
     }
 
-    // пишем причину в консоль сервера, чтобы легче было искать проблему
     console.error("Gemini error:", model, response.status, (await response.text()).slice(0, 300));
 
-    // 429 — закончилась квота, 503 — модель перегружена: пробуем следующую модель
     if (response.status !== 429 && response.status !== 503) break;
   }
 
@@ -78,7 +69,6 @@ const askGemini = async (chatText: string) => {
 };
 
 export const summarizeChatService = async (roomId: number, userId: number) => {
-  // 1. Пользователь должен состоять в сообществе, которому принадлежит комната
   const member = await pool.query(
     `select 1
      from rooms r
@@ -88,7 +78,6 @@ export const summarizeChatService = async (roomId: number, userId: number) => {
   );
   if (!member.rows[0]) throw apiErrors.forbidden("Комната не найдена или вы не состоите в сообществе");
 
-  // 2. Берём последние сообщения (у автора только anon_id, без имени и почты)
   const result = await pool.query(
     `select m.id, m.text, m.attachment, u.anon_id,
             to_char(m.created_at at time zone 'Asia/Bishkek', 'DD.MM HH24:MI') as sent_at
@@ -105,19 +94,16 @@ export const summarizeChatService = async (roomId: number, userId: number) => {
     throw apiErrors.badRequest("Слишком мало сообщений для сводки");
   }
 
-  // 3. Если новых сообщений нет — отдаём сохранённую сводку
   const lastMessageId = messages[messages.length - 1].id;
   const saved = cache.get(roomId);
   if (saved && saved.lastMessageId === lastMessageId) {
     return { summary: saved.summary, messageCount: saved.messageCount };
   }
 
-  // 4. Иначе просим Gemini (это считается в лимит пользователя)
   checkLimit(userId);
 
   const chatText = messages
     .map((m) => {
-      // фото модель не видит — просто помечаем
       const text = m.text || (m.attachment ? "[фото]" : "");
       return `Аноним #${m.anon_id} [${m.sent_at}]: ${text.slice(0, 500)}`;
     })

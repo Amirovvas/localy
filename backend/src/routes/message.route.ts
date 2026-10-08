@@ -7,6 +7,7 @@ import {
   getMessagesController,
   getPinnedMessagesController,
   getReadStateController,
+  getUnreadCountsController,
   markRoomReadController,
   searchMessagesController,
   toggleMessageReactionController,
@@ -25,6 +26,7 @@ router.get("/", authMiddleware, getMessagesController);
 router.get("/pinned", authMiddleware, getPinnedMessagesController);
 router.get("/search", authMiddleware, searchMessagesController);
 router.get("/read-state", authMiddleware, getReadStateController);
+router.get("/unread", authMiddleware, getUnreadCountsController);
 router.post("/", authMiddleware, validateSchema(createMessageSchema), createMessageController);
 router.post("/clear", authMiddleware, clearMessagesController);
 router.post("/read", authMiddleware, markRoomReadController);

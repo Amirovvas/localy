@@ -1,7 +1,5 @@
 import type { Pool, PoolClient } from "pg";
 
-// уникальный 4-значный анонимный номер пользователя ("Anonymous #4821"),
-// один и тот же во всех сообществах
 export const generateUniqueAnonId = async (
   db: Pool | PoolClient,
 ): Promise<number> => {

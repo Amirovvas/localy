@@ -21,9 +21,6 @@ export const authMiddleware = async (
     let decoded = jwt.verify(token, access_secret) as { id: number };
     (req as any).user = decoded;
 
-    // заблокированный модератором пользователь теряет доступ сразу, не
-    // дожидаясь истечения access-токена (он живёт 15 минут)
-    // is_admin берём тем же запросом — adminMiddleware не ходит в базу второй раз
     const result = await pool.query(`select is_blocked, is_admin from users where id = $1`, [
       decoded.id,
     ]);

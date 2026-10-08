@@ -8,6 +8,7 @@ import {
   getCommunitiesController,
   getCommunityController,
   getMyCommunitiesController,
+  getPublicStatsController,
   listAdminCommunitiesController,
   updateCommunityController,
 } from "../controllers/community.controller";
@@ -18,7 +19,7 @@ import { adminMiddleware } from "../middleware/admin.middleware";
 
 const router = Router();
 
-// /mine, /discover, /admin обязаны идти раньше /:id, иначе express примет их за id
+router.get("/stats", getPublicStatsController);
 router.get("/mine", authMiddleware, getMyCommunitiesController);
 router.get("/discover", authMiddleware, discoverCommunitiesController);
 router.get("/admin", authMiddleware, adminMiddleware, listAdminCommunitiesController);

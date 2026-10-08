@@ -18,6 +18,7 @@ interface IProfile {
   avatar: string;
   anon_id: number;
   is_admin: boolean;
+  allow_dm: boolean;
   created_at: string;
   communities: IProfileCommunity[];
 }

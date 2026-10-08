@@ -41,14 +41,13 @@ const Profile = () => {
       setNameError("Введите имя");
       return;
     }
-    // имя не изменилось — просто закрываем редактирование
     if (name === profile?.name) {
       setEditing(false);
       return;
     }
 
     setNameError(null);
-    updateProfile.mutate(name, {
+    updateProfile.mutate({ name }, {
       onSuccess: () => setEditing(false),
       onError: (error) =>
         setNameError(getApiErrorMessage(error) ?? "Не удалось сохранить имя. Попробуйте ещё раз."),
@@ -142,6 +141,29 @@ const Profile = () => {
                   <MapPin size={15} />
                   <span>{profile.city}</span>
                 </div>
+              </div>
+            </section>
+
+            <section className={css.card}>
+              <div className={css.switchRow}>
+                <span className={css.switchText}>
+                  <span className={css.switchTitle}>Принимать личные сообщения</span>
+                  <span className={css.switchHint}>
+                    Другие участники смогут отправить вам запрос на анонимную переписку.
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={profile.allow_dm}
+                  aria-label="Принимать личные сообщения"
+                  className={css.switch}
+                  data-on={profile.allow_dm}
+                  disabled={updateProfile.isPending}
+                  onClick={() => updateProfile.mutate({ allowDm: !profile.allow_dm })}
+                >
+                  <span className={css.switchKnob} />
+                </button>
               </div>
             </section>
 

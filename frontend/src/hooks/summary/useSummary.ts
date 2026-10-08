@@ -6,7 +6,6 @@ interface IResponse {
   data: { summary: string; messageCount: number };
 }
 
-// просим у сервера AI-сводку комнаты
 export const useSummary = () =>
   useMutation({
     mutationFn: async (roomId: number) => {

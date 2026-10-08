@@ -13,8 +13,6 @@
   border-right: 1px solid var(--loc-border);
 }
 
-/* на узких экранах сайдбар — выезжающая панель поверх контента, открывается
-   кнопкой-гамбургером в шапке (как в основном чате) */
 @media (max-width: 880px) {
   .sidebar {
     position: fixed;
@@ -30,10 +28,6 @@
     box-shadow: 12px 0 32px rgba(17, 24, 39, 0.14);
   }
 }
-
-/* =========================
-   HEADER
-========================= */
 
 .header {
   display: flex;
@@ -105,10 +99,6 @@
   letter-spacing: 0.04em;
 }
 
-/* =========================
-   NAV
-========================= */
-
 .nav {
   display: flex;
   flex-direction: column;
@@ -170,10 +160,6 @@
 .navBtn[data-active="true"] .navIcon {
   opacity: 1;
 }
-
-/* =========================
-   FOOTER
-========================= */
 
 .footer {
   margin-top: auto;

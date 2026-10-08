@@ -28,7 +28,6 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
   const [joiningId, setJoiningId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // не дёргаем API на каждую букву
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search.trim()), 250);
     return () => clearTimeout(timer);
@@ -41,7 +40,6 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
   } = useDiscoverCommunities(debouncedSearch, category);
   const joinCommunity = useJoinCommunity();
 
-  // после разрешения геолокации список сортируется по расстоянию от пользователя
   const { coords, status: locationStatus, requestLocation } = useUserLocation();
   const sortedCommunities = communities ? sortByDistance(communities, coords) : undefined;
 
@@ -59,8 +57,6 @@ const JoinCommunityModal = ({ onClose, onJoined }: IProps) => {
     });
   };
 
-  // портал в body: у мобильного сайдбара есть transform, из-за которого fixed-окно
-  // внутри него позиционировалось бы относительно сайдбара, а не экрана
   return createPortal(
     <Modal
       title="Присоединиться к сообществу"

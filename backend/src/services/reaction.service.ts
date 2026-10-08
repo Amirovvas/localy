@@ -2,9 +2,6 @@ import { pool } from "../plugins/pg";
 import { apiErrors } from "../utils/apiErrors";
 import { getIO, roomChannel } from "../plugins/socket";
 
-// SQL-фрагмент для selectMessage в message.service.ts: сгруппированные
-// реакции сообщения. userParam — плейсхолдер с id текущего пользователя
-// ("$2"), от него зависит флаг mine (моя реакция подсвечивается на фронтенде)
 export const reactionsSelect = (userParam: string, messageAlias = "m") => `
   coalesce((
     select json_agg(
@@ -33,8 +30,6 @@ export const toggleMessageReactionService = async (
   if (!message.rows[0]) throw apiErrors.notFound("Сообщение не найдено");
   const roomId: number = message.rows[0].room_id;
 
-  // insert ... on conflict do nothing не падает при гонке двух кликов:
-  // если строка уже была (ничего не вставилось) — значит это снятие реакции
   const inserted = await pool.query(
     `
     insert into message_reactions (message_id, user_id, emoji)
@@ -63,8 +58,6 @@ export const toggleMessageReactionService = async (
   );
   const reactions = counts.rows as { emoji: string; count: number; mine: boolean }[];
 
-  // остальным участникам уходят только счётчики: "mine" у каждого свой,
-  // клиент сохраняет его из собственного кэша
   getIO()
     ?.to(roomChannel(roomId))
     .emit("reaction:update", {

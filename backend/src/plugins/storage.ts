@@ -9,12 +9,8 @@ const bucket = () => process.env.SUPABASE_BUCKET || "chat-images";
 let client: SupabaseClient | null = null;
 let bucketReady: Promise<void> | null = null;
 
-// service_role-ключ обходит RLS и нужен только на сервере — во фронтенд он
-// не попадает никогда. Переменные необязательны: без них остальной backend
-// работает, а загрузка отвечает 503 с понятным текстом
 const getClient = () => {
   const url = process.env.SUPABASE_URL;
-  // SUPABASE_SECRET_KEY — имя из нового формата ключей Supabase (sb_secret_...)
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !key) {
     throw apiErrors.unavailable("Загрузка файлов не настроена на сервере");
@@ -23,9 +19,6 @@ const getClient = () => {
   return client;
 };
 
-// создаёт публичный бакет при первой загрузке (если его ещё нет): публичный,
-// потому что картинки показываются в <img> без токена; размер и типы
-// ограничены и на уровне самого Storage — вторая линия защиты после multer
 const ensureBucket = (supabase: SupabaseClient) => {
   if (!bucketReady) {
     bucketReady = (async () => {
@@ -58,8 +51,6 @@ export const uploadImage = async (path: string, body: Buffer, contentType: strin
   return supabase.storage.from(bucket()).getPublicUrl(path).data.publicUrl;
 };
 
-// префикс, с которого должен начинаться любой attachment: иначе в сообщение
-// можно было бы подсунуть произвольную внешнюю ссылку (трекер, фишинг)
 export const assertOwnAttachment = (attachment?: string) => {
   if (!attachment) return;
   const prefix = publicUrlPrefix();
@@ -68,9 +59,6 @@ export const assertOwnAttachment = (attachment?: string) => {
   }
 };
 
-// удаляет файл из бакета по его публичной ссылке. Ошибки не пробрасываем:
-// сообщение к этому моменту уже удалено из БД, и из-за недоступного Storage
-// пользователь не должен получать ошибку
 export const removeImageByUrl = async (url: string) => {
   try {
     const prefix = publicUrlPrefix();

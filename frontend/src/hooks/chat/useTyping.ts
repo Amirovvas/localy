@@ -7,17 +7,11 @@ interface TypingPayload {
   isTyping: boolean;
 }
 
-// пока от человека не приходит новых "печатает", считаем что он замолчал:
-// защита на случай, если событие "перестал" потерялось (обрыв сети, закрыли вкладку)
 const TYPING_TTL_MS = 5000;
-// повторно отправляем "печатает" не чаще раза в 2 секунды, а не на каждую букву
 const EMIT_INTERVAL_MS = 2000;
-// после паузы в наборе шлём "перестал"
 const IDLE_MS = 3000;
 
-// "кто сейчас печатает" в текущей комнате
 export const useTyping = (roomId: number) => {
-  // anon_id -> момент, когда запись протухнет
   const [typers, setTypers] = useState<Record<number, number>>({});
   const lastEmitRef = useRef(0);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -42,7 +36,6 @@ export const useTyping = (roomId: number) => {
     };
   }, [roomId]);
 
-  // убираем протухшие записи
   useEffect(() => {
     if (Object.keys(typers).length === 0) return;
 
@@ -89,7 +82,6 @@ export const useTyping = (roomId: number) => {
     idleTimerRef.current = setTimeout(stopTyping, IDLE_MS);
   }, [emit, stopTyping]);
 
-  // ушли из комнаты — сообщаем, что перестали печатать
   useEffect(() => stopTyping, [stopTyping]);
 
   return { typingIds: Object.keys(typers).map(Number), notifyTyping, stopTyping };

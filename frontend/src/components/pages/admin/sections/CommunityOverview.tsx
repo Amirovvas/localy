@@ -15,8 +15,6 @@ const CommunityOverview = () => {
   const { data: communities, isLoading } = useAdminCommunities();
   const [selectedId, setSelectedId] = useState<string[]>([]);
 
-  // SearchSelect работает со строковыми id — как только список сообществ
-  // загрузился, выбираем первое по умолчанию
   useEffect(() => {
     if (communities && communities.length > 0 && selectedId.length === 0) {
       setSelectedId([String(communities[0].id)]);

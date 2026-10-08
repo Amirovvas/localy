@@ -6,7 +6,6 @@ interface IReportBody {
   comment: string;
 }
 
-// короткая запись в историю действий модератора по жалобе
 const addReportEvent = async (reportId: number, text: string) => {
   await pool.query(`insert into report_events (report_id, text) values ($1, $2)`, [
     reportId,
@@ -35,8 +34,6 @@ export const reportMessageService = async (
     throw apiErrors.badRequest("Нельзя пожаловаться на своё сообщение");
   }
 
-  // один пользователь — одна жалоба на сообщение (unique в таблице), повторный
-  // клик не должен плодить дубликаты у модераторов
   const inserted = await pool.query(
     `
     insert into reports (
@@ -67,11 +64,8 @@ export const reportMessageService = async (
   const reportId = inserted.rows[0].id;
   await addReportEvent(reportId, "Жалоба создана");
 
-  // reporter_id наружу не отдаём: жалоба анонимна и для автора сообщения
   return { id: reportId };
 };
-
-// ---- Admin Panel: модерация жалоб ----
 
 const SELECT_REPORT = `
   select
@@ -110,9 +104,6 @@ const getReportRow = async (id: number) => {
   return result.rows[0];
 };
 
-// 1 сообщение до и 1 после — для блока "Контекст переписки". Сообщение из
-// самой жалобы могло быть уже удалено, поэтому якорем служит время создания
-// жалобы, а не самого сообщения
 export const getReportContextService = async (id: number) => {
   const report = await getReportRow(id);
   if (!report.room_id) return { before: null, after: null };
@@ -169,7 +160,6 @@ export const updateReportStatusService = async (id: number, status: string) => {
 };
 
 export const deleteReportService = async (id: number) => {
-  // report_events удалится каскадом
   const result = await pool.query(`delete from reports where id = $1 returning id`, [id]);
   if (!result.rows[0]) throw apiErrors.notFound("Жалоба не найдена");
   return result.rows[0];
@@ -179,8 +169,6 @@ export const deleteReportedMessageService = async (id: number) => {
   const report = await pool.query(`select message_id from reports where id = $1`, [id]);
   if (!report.rows[0]) throw apiErrors.notFound("Жалоба не найдена");
 
-  // сообщение могли уже удалить (сам автор, или по другой жалобе на него) —
-  // это не ошибка, просто помечаем жалобу как есть
   await pool.query(`delete from messages where id = $1`, [report.rows[0].message_id]);
   await pool.query(`update reports set message_deleted = true where id = $1`, [id]);
   await addReportEvent(id, "Сообщение удалено администратором");

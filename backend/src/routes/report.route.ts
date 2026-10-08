@@ -16,8 +16,6 @@ import { adminMiddleware } from "../middleware/admin.middleware";
 
 const router = Router();
 
-// раздел "Жалобы" в Admin Panel — сами жалобы создаются через
-// POST /messages/:id/report, а модерируются только администраторами
 router.get("/", authMiddleware, adminMiddleware, listReportsController);
 router.get("/:id/context", authMiddleware, adminMiddleware, getReportContextController);
 router.get("/:id/events", authMiddleware, adminMiddleware, listReportEventsController);

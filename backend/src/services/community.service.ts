@@ -1,5 +1,6 @@
 import { pool } from "../plugins/pg";
 import { apiErrors } from "../utils/apiErrors";
+import { getIO } from "../plugins/socket";
 
 interface ICreateBody {
   name: string;
@@ -21,11 +22,6 @@ interface IUpdateBody {
   lng?: number | null;
 }
 
-// обычным пользователям (регистрация, поиск) видны только "активные"
-// сообщества — pending/archived показываются лишь в Admin Panel.
-// Городские чаты (category='city') сюда не попадают — их нельзя выбрать
-// вручную, пользователь добавляется в свой городской чат автоматически
-// при регистрации по полю city (см. registerService)
 export const listCommunitiesService = async () => {
   const result = await pool.query(
     `
@@ -38,7 +34,17 @@ export const listCommunitiesService = async () => {
   return result.rows;
 };
 
-// сообщества, в которых состоит текущий пользователь (для сайдбара чата)
+export const getPublicStatsService = async () => {
+  const result = await pool.query(
+    `select count(*)::int as communities from communities where status = 'active' and category != 'city'`,
+  );
+  const io = getIO();
+  const online = io
+    ? new Set([...io.sockets.sockets.values()].map((socket) => socket.data.user?.id)).size
+    : 0;
+  return { ...result.rows[0], online };
+};
+
 export const listMyCommunitiesService = async (userId: number) => {
   const result = await pool.query(
     `
@@ -54,8 +60,6 @@ export const listMyCommunitiesService = async (userId: number) => {
   return result.rows;
 };
 
-// сообщества, в которых пользователя ещё нет — для окна "Присоединиться к
-// другому сообществу". Поиск по названию/описанию и фильтр по категории
 export const discoverCommunitiesService = async (
   userId: number,
   search?: string,
@@ -67,7 +71,6 @@ export const discoverCommunitiesService = async (
   )`;
 
   if (search) {
-    // экранируем спецсимволы like, чтобы "%" и "_" в поиске искались буквально
     params.push(`%${search.replace(/[\\%_]/g, "\\$&")}%`);
     where += ` and (c.name ilike $${params.length} or c.description ilike $${params.length})`;
   }
@@ -90,15 +93,12 @@ export const discoverCommunitiesService = async (
   return result.rows;
 };
 
-// в этих категориях пользователь может состоять только в одном сообществе
-// (школ можно несколько, городской чат добавляется автоматически)
 const SINGLE_CHOICE_CATEGORIES: Record<string, string> = {
   university: "университет, институт или колледж",
   district: "район",
   residential: "жилой комплекс",
 };
 
-// проверка списка при регистрации: из каждой "одиночной" категории — не больше одного
 export const assertSingleChoiceCategories = async (communityIds: number[]) => {
   const result = await pool.query(
     `
@@ -116,8 +116,6 @@ export const assertSingleChoiceCategories = async (communityIds: number[]) => {
   }
 };
 
-// вступление идемпотентно: повторный запрос (двойной клик, вторая вкладка)
-// не падает с ошибкой уникальности, а просто возвращает то же сообщество
 export const joinCommunityService = async (communityId: number, userId: number) => {
   const exists = await pool.query(`select id, category from communities where id = $1`, [
     communityId,
@@ -207,8 +205,6 @@ export const getCommunityService = async (id: number, userId: number) => {
   };
 };
 
-// Admin Panel: список ВСЕХ сообществ (любой статус) с числом участников и
-// комнатами — для таблицы и панели просмотра в разделе "Сообщества"
 export const listAdminCommunitiesService = async () => {
   const result = await pool.query(
     `

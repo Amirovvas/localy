@@ -4,8 +4,6 @@ import { getSocket } from "@/lib/socket";
 import { mapMessage, type RawMessage } from "./useGetMessages";
 import { mergeReactionCounts, type ChatMessage } from "@/lib/chat";
 
-// подписка на живые сообщения текущей комнаты: заходит в room:{roomId} на
-// сервере и складывает пришедшие сообщения в кэш useGetMessages той же комнаты
 export const useRoomSocket = (roomId: number | null) => {
   const queryClient = useQueryClient();
 
@@ -22,8 +20,6 @@ export const useRoomSocket = (roomId: number | null) => {
       const message = mapMessage(raw);
       queryClient.setQueryData<ChatMessage[]>(["messages", roomId], (prev) => {
         if (!prev) return [message];
-        // своё же сообщение уже добавлено оптимистично в useSendMessage —
-        // без проверки на id оно продублировалось бы
         if (prev.some((existing) => existing.id === message.id)) return prev;
         return [...prev, message];
       });
@@ -38,9 +34,6 @@ export const useRoomSocket = (roomId: number | null) => {
       );
     };
 
-    // закрепление/открепление меняет и само сообщение (флаг isPinned), и
-    // список закреплённых — второй проще перезапросить, чем вручную
-    // пересобирать на клиенте
     const handlePinUpdate = (raw: RawMessage & { room_id: number }) => {
       if (raw.room_id !== roomId) return;
 
@@ -67,8 +60,6 @@ export const useRoomSocket = (roomId: number | null) => {
       );
     };
 
-    // сообщение удалил кто-то (сам автор из другой вкладки, или сейчас) — у
-    // остальных участников комнаты оно должно пропасть без перезагрузки
     const handleDeletedMessage = (payload: { room_id: number; id: number }) => {
       if (payload.room_id !== roomId) return;
 

@@ -11,14 +11,11 @@ import uploadRouter from "./routes/upload.route";
 import summaryRouter from "./routes/summary.route";
 import userRouter from "./routes/user.route";
 import reportRouter from "./routes/report.route";
+import conversationRouter from "./routes/conversation.route";
 
 const createApi = () => {
   const app = express();
 
-  // это API с авторизацией, а не статика — ответы не должны кэшироваться.
-  // Иначе Express сам генерирует ETag, и браузер на повторный запрос
-  // (например /auth/profile после логина) иногда получает 304 без тела,
-  // из-за чего фронтенд не может прочитать данные
   app.disable("etag");
 
   app.use(
@@ -39,6 +36,7 @@ const createApi = () => {
   app.use("/summary", summaryRouter);
   app.use("/users", userRouter);
   app.use("/reports", reportRouter);
+  app.use("/conversations", conversationRouter);
 
   app.use(errorHandler);
 

@@ -13,8 +13,6 @@ interface IResponse {
   data: RawMessage;
 }
 
-// закрепить/открепить сообщение может любой участник комнаты — в Localy нет
-// отдельной роли "модератор комнаты", только общий admin
 export const useTogglePin = () => {
   const queryClient = useQueryClient();
 

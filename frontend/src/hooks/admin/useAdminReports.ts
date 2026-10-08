@@ -7,7 +7,6 @@ interface IResponse {
   data: AdminReport[];
 }
 
-// все жалобы сразу (вкладки со статусами фильтруются на клиенте — их немного)
 export const useAdminReports = () =>
   useQuery({
     queryKey: ["admin", "reports"],

@@ -16,9 +16,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// access-токен живёт 15 минут (см. backend/src/utils/generateTokens.ts),
-// поэтому запрос, сделанный позже, получит 401 — здесь мы один раз молча
-// обновляем токен через httpOnly refreshToken-cookie и повторяем запрос
 let refreshPromise: Promise<string | null> | null = null;
 
 const refreshAccessToken = async () => {

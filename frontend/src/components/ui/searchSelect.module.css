@@ -131,10 +131,6 @@
   transform: rotate(180deg);
 }
 
-/* =========================
-   DROPDOWN
-========================= */
-
 .menu {
   position: absolute;
   z-index: 30;

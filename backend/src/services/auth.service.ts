@@ -23,9 +23,6 @@ export const registerService = async (body: IRegisterBody) => {
   await assertSingleChoiceCategories(body.communityIds);
   const hashedPassword = await bcrypt.hash(body.password, 9);
 
-  // создание пользователя и его членства в сообществах — одна транзакция:
-  // без неё сбой на вставке community_members оставил бы "повисшего"
-  // пользователя без единого сообщества
   const client = await pool.connect();
   try {
     await client.query("begin");
@@ -41,8 +38,6 @@ export const registerService = async (body: IRegisterBody) => {
     );
     const user = userResult.rows[0];
 
-    // помимо выбранных вручную сообществ — автоматически добавляем в
-    // общегородской чат, соответствующий выбранному городу (если он есть)
     const cityCommunity = await client.query(
       `select id from communities where category = 'city' and name = $1`,
       [body.city],
@@ -52,8 +47,6 @@ export const registerService = async (body: IRegisterBody) => {
       new Set([...body.communityIds, ...(cityCommunityId ? [cityCommunityId] : [])]),
     );
 
-    // сообщества обязаны существовать — иначе внешний ключ бросит ошибку и
-    // транзакция откатится целиком
     const values = allCommunityIds
       .map((_, index) => `($1, $${index + 2})`)
       .join(", ");
@@ -139,7 +132,6 @@ export const refreshService = async (refreshToken: string) => {
     throw apiErrors.unauthorized("unauthorized");
   }
 
-  // ротация refresh-токена
   const tokens = generateTokens({
     id: result.rows[0].id,
     email: result.rows[0].email,
@@ -167,11 +159,9 @@ export const logoutService = async (refreshToken: string) => {
 };
 
 export const profileService = async (userId: number) => {
-  // пользователь и его сообщества не зависят друг от друга — запускаем оба
-  // запроса параллельно вместо двух последовательных round-trip'ов к БД
   const [userResult, communitiesResult] = await Promise.all([
     pool.query(
-      `select id, name, email, city, avatar, anon_id, is_admin, created_at from users where id = $1`,
+      `select id, name, email, city, avatar, anon_id, is_admin, allow_dm, created_at from users where id = $1`,
       [userId],
     ),
     pool.query(
@@ -192,20 +182,25 @@ export const profileService = async (userId: number) => {
   return { ...user, communities: communitiesResult.rows };
 };
 
-export const updateProfileService = async (userId: number, name: string) => {
+export const updateProfileService = async (
+  userId: number,
+  changes: { name?: string; allowDm?: boolean },
+) => {
   const result = await pool.query(
-    `update users set name = $1, updated_at = now() where id = $2 returning id, name`,
-    [name, userId],
+    `
+    update users set
+      name = coalesce($1, name),
+      allow_dm = coalesce($2, allow_dm),
+      updated_at = now()
+    where id = $3
+    returning id, name, allow_dm
+    `,
+    [changes.name ?? null, changes.allowDm ?? null, userId],
   );
   if (!result.rows[0]) throw apiErrors.notFound("Пользователь не найден");
   return result.rows[0];
 };
 
-// ---- Admin Panel: управление пользователями ----
-
-// поиск по имени/почте — используется таблицей "Пользователи" в Admin Panel.
-// самих администраторов в этот список не включаем — это управление обычными
-// пользователями, а не список аккаунтов с полным доступом
 export const listUsersService = async (search?: string) => {
   const params: any[] = [];
   let where = "where not u.is_admin";
@@ -252,8 +247,6 @@ export const getUserService = async (id: number) => {
 };
 
 export const deleteUserService = async (id: number) => {
-  // каскад уже настроен на всех таблицах (сообщения, реакции, жалобы,
-  // членство в сообществах, события) — отдельная чистка не нужна
   const result = await pool.query(`delete from users where id = $1 returning id`, [id]);
   if (!result.rows[0]) throw apiErrors.notFound("Пользователь не найден");
   return result.rows[0];

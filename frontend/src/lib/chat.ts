@@ -7,7 +7,6 @@ export interface ChatCommunity {
   city: string;
   description: string;
   members: number;
-  // координаты для сортировки "рядом со мной"; у части мест их может не быть
   lat?: number | null;
   lng?: number | null;
 }
@@ -30,7 +29,6 @@ export interface ChatEvent {
 export interface ChatReaction {
   emoji: string;
   count: number;
-  // поставил ли эту реакцию текущий пользователь
   mine: boolean;
 }
 
@@ -58,12 +56,8 @@ export interface ChatCommunityDetail extends ChatCommunity {
   events: ChatEvent[];
 }
 
-// набор для пикера реакций — совпадает с белым списком backend (utils/reactions.ts)
 export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "🎉"];
 
-// через сокет всем приходят только счётчики без флага "mine" (он у каждого
-// свой) — сохраняем его из текущего кэша, а свежий mine придёт из ответа
-// собственного POST
 export const mergeReactionCounts = (
   prev: ChatReaction[] | undefined,
   counts: { emoji: string; count: number }[],

@@ -24,12 +24,9 @@ pool.connect().then(async () => {
     )
   `);
 
-  // анонимный номер — виден другим участникам чата вместо имени/почты
   await pool.query(`
     alter table users add column if not exists anon_id integer
   `);
-  // is_admin — доступ к Admin Panel; is_blocked — забанен модератором и не
-  // может логиниться / писать сообщения (проверяется в authMiddleware)
   await pool.query(`
     alter table users add column if not exists is_admin boolean not null default false
   `);
@@ -39,7 +36,6 @@ pool.connect().then(async () => {
   await pool.query(`
     create unique index if not exists users_anon_id_idx on users(anon_id)
   `);
-  // бэкфилл для пользователей, заведённых до этой миграции
   const usersWithoutAnonId = await pool.query(
     `select id from users where anon_id is null`,
   );
@@ -51,7 +47,6 @@ pool.connect().then(async () => {
     ]);
   }
 
-  // 4 категории сообществ Localy — совпадают с CommunityCategory на фронте
   await pool.query(`
     create table if not exists communities (
       id serial primary key,
@@ -62,22 +57,17 @@ pool.connect().then(async () => {
       created_at timestamptz not null default now()
     )
   `);
-  // модерация сообществ в Admin Panel: pending — новое, ждёт проверки,
-  // active — видно всем при регистрации/поиске, archived — скрыто
   await pool.query(`
     alter table communities
       add column if not exists status text not null default 'active'
       check (status in ('active', 'pending', 'archived'))
   `);
-  // отдельная категория 'city' — общегородской чат, в него автоматически
-  // попадает каждый пользователь, выбравший этот город при регистрации
   await pool.query(`alter table communities drop constraint if exists communities_category_check`);
   await pool.query(`
     alter table communities add constraint communities_category_check
       check (category in ('university', 'school', 'district', 'residential', 'city'))
   `);
 
-  // связь пользователь <-> сообщество, на которое он подписан при регистрации
   await pool.query(`
     create table if not exists community_members (
       id serial primary key,
@@ -88,7 +78,6 @@ pool.connect().then(async () => {
     )
   `);
 
-  // комнаты внутри сообщества ("# общее", "# объявления"...)
   await pool.query(`
     create table if not exists rooms (
       id serial primary key,
@@ -101,7 +90,6 @@ pool.connect().then(async () => {
     )
   `);
 
-  // события сообщества
   await pool.query(`
     create table if not exists events (
       id serial primary key,
@@ -115,14 +103,11 @@ pool.connect().then(async () => {
     )
   `);
 
-  // кто создал событие: в "Предстоящие события" каждый видит только свои
   await pool.query(`
     alter table events
       add column if not exists created_by integer references users(id) on delete cascade
   `);
 
-  // сообщения в комнатах — автор виден другим только как anon_id (users.anon_id),
-  // реальные имя/почта в API сообщений не отдаются
   await pool.query(`
     create table if not exists messages (
       id serial primary key,
@@ -138,20 +123,13 @@ pool.connect().then(async () => {
     create index if not exists messages_room_id_created_at_idx
       on messages(room_id, created_at)
   `);
-  // ответ на конкретное сообщение; при удалении оригинала ответ остаётся,
-  // просто без цитаты (on delete set null)
   await pool.query(`
     alter table messages
       add column if not exists reply_to_id integer references messages(id) on delete set null
   `);
-  // момент последнего редактирования — null, если сообщение не менялось;
-  // используется, чтобы показать пометку "изменено" в чате
   await pool.query(`
     alter table messages add column if not exists edited_at timestamptz
   `);
-  // момент закрепления — null, если сообщение не закреплено. Закреплённые
-  // сообщения комнаты видны всем участникам, закрепить/открепить может любой
-  // (в Localy нет отдельной роли "модератор комнаты")
   await pool.query(`
     alter table messages add column if not exists pinned_at timestamptz
   `);
@@ -160,10 +138,6 @@ pool.connect().then(async () => {
       on messages(room_id, pinned_at) where pinned_at is not null
   `);
 
-  // "прочитано до сообщения №": по этой отметке при входе в комнату считаем,
-  // где поставить разделитель "Непрочитанные сообщения" и куда прокрутить.
-  // Нет записи — пользователь ещё ни разу не открывал комнату, разделитель
-  // в этом случае не показываем (не с чем сравнивать)
   await pool.query(`
     create table if not exists room_reads (
       user_id integer not null references users(id) on delete cascade,
@@ -173,8 +147,6 @@ pool.connect().then(async () => {
     )
   `);
 
-  // реакции: один пользователь — одна запись на (сообщение, эмодзи), повторный
-  // клик снимает реакцию
   await pool.query(`
     create table if not exists message_reactions (
       message_id integer not null references messages(id) on delete cascade,
@@ -184,9 +156,6 @@ pool.connect().then(async () => {
       primary key (message_id, user_id, emoji)
     )
   `);
-  // жалобы на сообщения. message_id намеренно БЕЗ внешнего ключа: если автор
-  // удалит сообщение, модератор всё равно должен видеть, на что жаловались —
-  // поэтому текст сообщения и автор сохраняются снимком в момент жалобы
   await pool.query(`
     create table if not exists reports (
       id serial primary key,
@@ -206,16 +175,12 @@ pool.connect().then(async () => {
     create index if not exists reports_status_created_at_idx
       on reports(status, created_at desc)
   `);
-  // раньше жалобы были и на сообщения локаций — колонка kind и старый
-  // составной unique больше не нужны, один пользователь — одна жалоба на сообщение
   await pool.query(`alter table reports drop constraint if exists reports_reporter_id_kind_message_id_key`);
   await pool.query(`alter table reports drop column if exists kind`);
   await pool.query(`
     create unique index if not exists reports_reporter_id_message_id_idx
       on reports(reporter_id, message_id)
   `);
-  // старые статусы 'rejected' были переименованы в 'dismissed', 'new' в мок-панели
-  // соответствует 'pending' здесь; расширяем check под "взять на рассмотрение"
   await pool.query(`alter table reports drop constraint if exists reports_status_check`);
   await pool.query(`
     update reports set status = 'dismissed' where status = 'rejected'
@@ -224,18 +189,13 @@ pool.connect().then(async () => {
     alter table reports add constraint reports_status_check
       check (status in ('pending', 'reviewing', 'resolved', 'dismissed'))
   `);
-  // room_id — снимок на момент жалобы: если сообщение потом удалят (сам автор
-  // или админ), мы всё равно знаем, в какой комнате была переписка
   await pool.query(`
     alter table reports add column if not exists room_id integer references rooms(id) on delete set null
   `);
-  // помечаем, что сообщение удалено из этой жалобы — сам текст остаётся в
-  // message_text как снимок, но показывается с пометкой "удалено"
   await pool.query(`
     alter table reports add column if not exists message_deleted boolean not null default false
   `);
 
-  // история действий модератора по жалобе — короткий лог для панели "Жалобы"
   await pool.query(`
     create table if not exists report_events (
       id serial primary key,
@@ -245,9 +205,6 @@ pool.connect().then(async () => {
     )
   `);
 
-  // "очистить чат у себя": для каждого (пользователь, комната) запоминаем
-  // момент очистки — при загрузке сообщений всё, что было до него, этому
-  // пользователю не отдаём. У остальных участников комнаты ничего не меняется
   await pool.query(`
     create table if not exists message_clears (
       user_id integer not null references users(id) on delete cascade,
@@ -257,11 +214,6 @@ pool.connect().then(async () => {
     )
   `);
 
-  // индексы под самые частые запросы (все идемпотентные):
-  // - счётчики участников сообщества (count по community_id; unique начинается с user_id)
-  // - max(id) / "прочитано до" по комнате
-  // - ответы (on delete set null ищет сообщения по reply_to_id) и сообщения автора
-  // - проверка "эту картинку ещё кто-то использует" при удалении сообщения
   await pool.query(`
     create index if not exists community_members_community_id_idx on community_members(community_id)
   `);
@@ -281,18 +233,39 @@ pool.connect().then(async () => {
     create index if not exists message_reactions_user_id_idx on message_reactions(user_id)
   `);
 
-  // "timestamp without time zone" хранит наивное значение: при записи оно
-  // молча приводится к wall-clock текущей сессии (у нас UTC), а вот
-  // node-postgres при ЧТЕНИИ такой колонки интерпретирует её как локальное
-  // время ПРОЦЕССА Node.js, а не UTC. Если процесс запущен не в UTC (как
-  // здесь), даты на фронте уезжают на разницу поясов. timestamptz хранит и
-  // передаёт абсолютный instant, такой проблемы не создаёт — конвертируем
-  // все datetime-колонки один раз; для уже timestamptz-колонок операция
-  // идемпotентна (AT TIME ZONE 'UTC' на timestamptz -> naive UTC -> обратно
-  // в timestamptz даёт тот же instant)
-  // alter ... using перезаписывает всю таблицу под блокировкой, поэтому делаем
-  // его только для тех колонок, которые ещё остались "without time zone" —
-  // на уже сконвертированной базе при каждом запуске сервера ничего не меняется
+  await pool.query(`alter table users add column if not exists allow_dm boolean not null default true`);
+  await pool.query(`
+    create table if not exists conversations (
+      id serial primary key,
+      user_a integer not null references users(id) on delete cascade,
+      user_b integer not null references users(id) on delete cascade,
+      initiator_id integer not null references users(id) on delete cascade,
+      status text not null default 'pending' check (status in ('pending', 'accepted', 'declined', 'blocked')),
+      blocked_by integer references users(id) on delete set null,
+      community_id integer references communities(id) on delete set null,
+      user_a_read_id integer not null default 0,
+      user_b_read_id integer not null default 0,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      check (user_a < user_b),
+      unique (user_a, user_b)
+    )
+  `);
+  await pool.query(`create index if not exists conversations_user_b_idx on conversations(user_b)`);
+  await pool.query(`
+    create table if not exists direct_messages (
+      id serial primary key,
+      conversation_id integer not null references conversations(id) on delete cascade,
+      sender_id integer not null references users(id) on delete cascade,
+      text text not null,
+      created_at timestamptz not null default now()
+    )
+  `);
+  await pool.query(`
+    create index if not exists direct_messages_conversation_id_id_idx
+      on direct_messages(conversation_id, id)
+  `);
+
   const dateColumns = [
     ["users", "created_at"],
     ["users", "updated_at"],
@@ -319,14 +292,9 @@ pool.connect().then(async () => {
       );
     }
   }
-  // локации в чате больше не нужны — чистим таблицы, если они остались
-  // с прошлой версии базы (cascade заодно удаляет их сообщения и реакции)
   await pool.query(`drop table if exists location_messages cascade`);
   await pool.query(`drop table if exists locations cascade`);
 
-  // сидируем стартовый набор сообществ один раз — дальше их создают через
-  // Admin Panel (Management -> Сообщества); on conflict do nothing делает
-  // сид идемпотентным при каждом рестарте сервера
   await pool.query(`
     insert into communities (name, category, city, description) values
       ('AUCA', 'university', 'Бишкек', 'Официальное сообщество студентов и сотрудников Американского университета Центральной Азии.'),
@@ -340,7 +308,6 @@ pool.connect().then(async () => {
     on conflict (name) do nothing
   `);
 
-  // сид комнат — по названию сообщества, чтобы не зависеть от serial id
   await pool.query(`
     insert into rooms (community_id, name, description, position)
     select c.id, r.name, r.description, r.position
@@ -372,8 +339,6 @@ pool.connect().then(async () => {
     on conflict (community_id, name) do nothing
   `);
 
-  // расширяем список сообществ Бишкека: топ вузы и колледжи, школы/гимназии,
-  // жилые комплексы — которых ещё не было в сидированном наборе выше
   await pool.query(`
     insert into communities (name, category, city, description) values
       ('КНУ им. Ж. Баласагына', 'university', 'Бишкек', 'Сообщество студентов и сотрудников Кыргызского национального университета им. Ж. Баласагына.'),
@@ -416,13 +381,9 @@ pool.connect().then(async () => {
       ('Ленинский район', 'district', 'Бишкек', 'Официальное сообщество для жителей Ленинского района.')
     on conflict (name) do nothing
   `);
-  // координаты нужны уже здесь (вставка мест ниже); повторное объявление ниже безвредно
   await pool.query(`alter table communities add column if not exists lat double precision`);
   await pool.query(`alter table communities add column if not exists lng double precision`);
 
-  // школы, вузы, микрорайоны, жилмассивы и ЖК Бишкека с координатами (список в
-  // data/places.ts). on conflict do nothing — уже существующие сообщества и
-  // поправленные вручную координаты не трогаем; комнаты им создаёт шаблон ниже
   await pool.query(
     `
     insert into communities (name, category, city, description, lat, lng)
@@ -440,9 +401,6 @@ pool.connect().then(async () => {
     [PLACES.map((p) => p[0]), PLACES.map((p) => p[1]), PLACES.map((p) => p[2]), PLACES.map((p) => p[3])],
   );
 
-  // те же 5 комнат, что у AUCA — общий шаблон, подходит для новых сообществ
-  // (для городских чатов, category='city', отдельно заведена одна комната
-  // "общее" выше — их этот шаблон намеренно не трогает)
   await pool.query(`
     insert into rooms (community_id, name, description, position)
     select c.id, r.name, r.description, r.position
@@ -458,9 +416,6 @@ pool.connect().then(async () => {
     on conflict (community_id, name) do nothing
   `);
 
-  // общегородские чаты: по одному на каждый город из списка при регистрации
-  // (frontend/src/lib/registerOptions.ts). Имя сообщества совпадает с
-  // названием города — так registerService находит нужный чат по city
   await pool.query(`
     insert into communities (name, category, city, description) values
       ('Бишкек', 'city', 'Бишкек', 'Общий чат для всех жителей города Бишкек.'),
@@ -487,8 +442,6 @@ pool.connect().then(async () => {
     where c.category = 'city'
     on conflict (community_id, name) do nothing
   `);
-  // задним числом добавляем в городской чат тех, кто зарегистрировался до
-  // появления этой функции — сверяем users.city с названием сообщества
   await pool.query(`
     insert into community_members (user_id, community_id)
     select u.id, c.id
@@ -497,13 +450,8 @@ pool.connect().then(async () => {
     on conflict (user_id, community_id) do nothing
   `);
 
-  // координаты сообществ — нужны для рекомендаций "рядом со мной" (расстояние
-  // считает фронтенд в браузере). Без координат сообщество просто не получает
-  // расстояния и показывается после остальных. Значения примерные (центр района,
-  // здание вуза/школы); поправить или добавить можно в Admin Panel
   await pool.query(`alter table communities add column if not exists lat double precision`);
   await pool.query(`alter table communities add column if not exists lng double precision`);
-  // where c.lat is null — не затираем координаты, которые уже поправили вручную
   await pool.query(`
     update communities c set lat = g.lat, lng = g.lng
     from (values
@@ -523,8 +471,6 @@ pool.connect().then(async () => {
       ('БГУ им. К. Карасаева', 42.85035, 74.58508),
       ('КГЮА', 42.87636, 74.57977),
       ('Кыргызско-турецкая гимназия «Сапат»', 42.81552, 74.63876),
-      -- ниже — ПРИБЛИЗИТЕЛЬНЫЕ точки (места не нашлись на карте), просто в нужной
-      -- части Бишкека; точные координаты можно ввести в Admin Panel
       ('Гимназия №1', 42.8745, 74.6020),
       ('Гимназия №13', 42.8560, 74.5920),
       ('Гимназия №28', 42.8830, 74.6100),
@@ -556,13 +502,6 @@ pool.connect().then(async () => {
     where c.name = g.name and c.lat is null
   `);
 
-  // сид событий — starts_at считается от полуночи (UTC) "сегодня" + смещение
-  // в днях + фиксированное время суток (в UTC, чтобы на фронте в часовом
-  // поясе Бишкека (+6) получались круглые 18:00 / 10:00 / 09:00 и т.д.).
-  // on conflict делает update, а не nothing — даты пересчитываются от
-  // текущего "сегодня" при каждом рестарте сервера, а не застывают навсегда
-  // на моменте первого сидирования (иначе через несколько дней "предстоящие"
-  // события оказались бы в прошлом)
   await pool.query(`
     insert into events (community_id, title, place, starts_at, joining_count)
     select c.id, e.title, e.place, date_trunc('day', now()) + e.offset, e.joining_count

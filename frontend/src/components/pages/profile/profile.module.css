@@ -4,8 +4,6 @@
   background: var(--loc-bg);
 }
 
-/* ---------- верхняя полоса ---------- */
-
 .topbar {
   position: sticky;
   top: 0;
@@ -47,8 +45,6 @@
   font-weight: 700;
 }
 
-/* ---------- контент ---------- */
-
 .content {
   display: flex;
   flex-direction: column;
@@ -84,8 +80,6 @@
 
   font-size: 13px;
 }
-
-/* ---------- аккаунт ---------- */
 
 .accountHead {
   display: flex;
@@ -155,7 +149,6 @@
   background: var(--loc-bg);
   color: var(--loc-text);
 
-  /* 16px — иначе iOS при фокусе приближает страницу */
   font-size: 16px;
 }
 
@@ -190,8 +183,6 @@
   font-size: 14px;
   overflow-wrap: anywhere;
 }
-
-/* ---------- сообщества ---------- */
 
 .sectionHead {
   display: flex;
@@ -287,8 +278,6 @@
   border-color: var(--loc-danger);
 }
 
-/* ---------- кнопки ---------- */
-
 .primaryBtn,
 .secondaryBtn {
   display: inline-flex;
@@ -357,8 +346,6 @@
   cursor: default;
 }
 
-/* ---------- телефон ---------- */
-
 @media (max-width: 520px) {
   .content {
     padding: 12px 12px 28px;
@@ -368,7 +355,6 @@
     padding: 14px;
   }
 
-  /* на узком экране кнопка редактирования — только иконка */
   .editBtn span {
     display: none;
   }
@@ -382,4 +368,76 @@
   .editActions > button {
     flex: 1;
   }
+}
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.switchText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+
+  min-width: 0;
+}
+
+.switchTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.switchHint {
+  color: var(--loc-text-tertiary);
+
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.switch {
+  position: relative;
+  flex-shrink: 0;
+
+  width: 46px;
+  height: 26px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: 999px;
+  background: var(--loc-surface-soft);
+
+  cursor: pointer;
+
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.switch[data-on="true"] {
+  border-color: var(--loc-accent);
+  background: var(--loc-accent);
+}
+
+.switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.switchKnob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+
+  width: 20px;
+  height: 20px;
+
+  border-radius: 50%;
+  background: var(--loc-text);
+
+  transition: transform 0.2s ease;
+}
+
+.switch[data-on="true"] .switchKnob {
+  background: #0f1115;
+  transform: translateX(20px);
 }

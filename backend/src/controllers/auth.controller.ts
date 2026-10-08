@@ -8,12 +8,6 @@ import {
   updateProfileService,
 } from "../services/auth.service";
 
-// фронтенд и бэкенд живут на разных доменах (vercel.app / onrender.com) —
-// для таких "кросс-сайтовых" запросов браузер отправляет cookie обратно на
-// сервер только при sameSite: "none" + secure: true, иначе куку просто не
-// отправит на XHR/fetch-запросы (только на прямые переходы по ссылке), и
-// silent refresh перестаёт работать. Локально (http://localhost) secure-кука
-// не сработает вовсе, поэтому здесь остаётся lax
 const isProd = process.env.NODE_ENV === "production";
 const refreshCookieOptions = {
   httpOnly: true,
@@ -73,8 +67,6 @@ export const refreshController = async (
   try {
     const token = req.cookies.refreshToken;
     const result = await refreshService(token);
-    // refreshService ротирует refresh-токен в БД — новый нужно вернуть клиенту
-    // тем же cookie, иначе следующий /refresh получит уже неактуальный токен
     res.cookie("refreshToken", result.refreshToken, refreshCookieOptions);
     res.status(200).json({
       message: "refreshed",
@@ -109,7 +101,7 @@ export const updateProfileController = async (
 ) => {
   try {
     const userId = (req as any).user.id;
-    const result = await updateProfileService(userId, req.body.name);
+    const result = await updateProfileService(userId, req.body);
     res.status(200).json({
       message: "profile updated",
       data: result,

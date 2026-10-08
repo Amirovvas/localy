@@ -1,0 +1,78 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.textarea {
+  width: 100%;
+  padding: 12px 14px;
+
+  border: 1px solid var(--loc-border);
+  border-radius: var(--loc-radius-md);
+  background: var(--loc-bg);
+  color: var(--loc-text);
+  resize: vertical;
+
+  font-size: 16px;
+  line-height: 1.45;
+}
+
+.textarea:focus {
+  outline: none;
+  border-color: var(--loc-accent);
+}
+
+.error {
+  margin: 0;
+
+  color: var(--loc-danger);
+
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cancelBtn,
+.sendBtn {
+  min-height: 40px;
+  padding: 0 18px;
+
+  border-radius: var(--loc-radius-md);
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.cancelBtn {
+  border: 1px solid var(--loc-border);
+  background: transparent;
+  color: var(--loc-text);
+}
+
+.sendBtn {
+  border: 1px solid var(--loc-accent);
+  background: var(--loc-accent);
+  color: #0f1115;
+}
+
+.sendBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (max-width: 520px) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+}

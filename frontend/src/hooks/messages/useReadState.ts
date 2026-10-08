@@ -6,9 +6,6 @@ interface IResponse {
   data: { lastReadMessageId: number | null };
 }
 
-// null — пользователь ещё ни разу не открывал эту комнату. ChatArea в этом
-// случае считает прочитанным "до нулевого id", то есть вся история в первый
-// заход тоже попадает под разделитель "Непрочитанные сообщения"
 export const useReadState = (roomId: number | null) =>
   useQuery({
     queryKey: ["messages", "read-state", roomId],

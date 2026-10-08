@@ -8,8 +8,6 @@ interface IProps {
   onClick: () => void;
 }
 
-// кнопка "Найти рядом со мной" + пояснение под ней (используется при
-// регистрации и в окне "Присоединиться к сообществу")
 const NearMeButton = ({ status, onClick }: IProps) => (
   <div className={css.wrap}>
     <button

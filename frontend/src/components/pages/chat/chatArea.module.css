@@ -10,10 +10,6 @@
   background: var(--loc-bg);
 }
 
-/* =========================
-   TOPBAR
-========================= */
-
 .topbar {
   display: flex;
   align-items: center;
@@ -29,6 +25,8 @@
 
 .menuBtn,
 .infoBtn {
+  position: relative;
+
   display: flex;
 
   align-items: center;
@@ -46,8 +44,6 @@
   cursor: pointer;
 }
 
-/* на широких экранах панель информации по умолчанию не нужна — прячем её
-   кнопку там, а на узких она открывает InfoPanel поверх контента */
 .infoBtn {
   display: none;
 }
@@ -144,10 +140,6 @@
   background: var(--loc-accent-soft);
   border-color: var(--loc-accent);
 }
-
-/* =========================
-   SEARCH
-========================= */
 
 .searchWrap {
   position: relative;
@@ -298,10 +290,6 @@
   }
 }
 
-/* =========================
-   PINNED BAR
-========================= */
-
 .pinnedBar {
   border-bottom: 1px solid var(--loc-border);
   background: var(--loc-surface);
@@ -421,10 +409,6 @@
   color: var(--loc-danger);
 }
 
-/* =========================
-   ROOM HEAD
-========================= */
-
 .roomHead {
   padding: 14px 20px 12px;
 
@@ -451,10 +435,6 @@
   font-size: 12px;
   line-height: 1.5;
 }
-
-/* =========================
-   AI SUMMARY BANNER
-========================= */
 
 .summaryBanner {
   display: flex;
@@ -496,10 +476,6 @@
   cursor: pointer;
 }
 
-/* =========================
-   MESSAGES
-========================= */
-
 .messages {
   flex: 1;
   min-height: 0;
@@ -520,10 +496,6 @@
   font-size: 13px;
   text-align: center;
 }
-
-/* =========================
-   UNREAD DIVIDER
-========================= */
 
 .unreadDivider {
   display: flex;
@@ -568,8 +540,6 @@
   border: 1px solid #e0e7ff;
 }
 
-/* свои сообщения — справа: строка разворачивается, аватар уходит на правый
-   край, а body перестаёт растягиваться на всю ширину и жмётся к нему */
 .message.own {
   flex-direction: row-reverse;
 }
@@ -585,16 +555,11 @@
   }
 }
 
-/* кнопки при наведении обычно прижаты к аватару справа — у своих сообщений
-   аватар теперь слева от них, поэтому переносим панель на другую сторону */
 .message.own .hoverActions {
   right: auto;
   left: 8px;
 }
 
-/* пикер реакций обычно растёт влево от правого края панели — у своих
-   сообщений панель теперь слева, так что растим его вправо, иначе он
-   уезжает за левый край экрана */
 .message.own .reactionPicker {
   right: auto;
   left: 0;
@@ -656,10 +621,6 @@
   flex-shrink: 0;
   color: var(--loc-accent);
 }
-
-/* =========================
-   INLINE EDIT
-========================= */
 
 .editBox {
   margin: 3px 0 0;
@@ -828,10 +789,6 @@
   color: var(--loc-accent);
 }
 
-/* =========================
-   INPUT BAR
-========================= */
-
 .inputBar {
   display: flex;
   align-items: center;
@@ -903,8 +860,6 @@
   background: var(--loc-surface);
 }
 
-/* на телефоне кнопки эмодзи нет (своя системная клавиатура) — правый отступ
-   под неё тоже не нужен */
 @media (max-width: 767px) {
   .messageInput {
     padding-right: 14px;
@@ -964,10 +919,6 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
-
-/* =========================
-   REPORT MODAL
-========================= */
 
 .modalScrim {
   position: fixed;
@@ -1060,10 +1011,6 @@
   background: var(--loc-border);
   color: var(--loc-text);
 }
-
-/* =========================
-   REPLY
-========================= */
 
 .replyQuote {
   display: flex;
@@ -1174,16 +1121,9 @@
 }
 
 .message.highlighted {
-  /* литерал, а не var(--loc-accent-soft): CSS-переменные в незарегистрированном
-     виде не анимируются через transition — с var() тут фон весь 1.6с оставался
-     бы прозрачным вместо плавного появления подсветки */
   background: #2a2a55;
   transition: background 0.3s ease;
 }
-
-/* =========================
-   CREATE EVENT MODAL
-========================= */
 
 .eventForm {
   display: flex;
@@ -1268,10 +1208,6 @@
   cursor: not-allowed;
 }
 
-/* =========================
-   REACTIONS
-========================= */
-
 .reaction.reactionMine {
   border-color: var(--loc-accent);
   background: var(--loc-accent-soft);
@@ -1319,10 +1255,6 @@
   background: var(--loc-surface-soft);
 }
 
-/* =========================
-   EMOJI PANEL (поле ввода)
-========================= */
-
 .emojiBtn.emojiBtnActive {
   background: var(--loc-accent-soft);
   color: var(--loc-accent);
@@ -1340,9 +1272,6 @@
   box-shadow: 0 10px 28px rgba(17, 24, 39, 0.14);
 }
 
-/* на узких экранах кнопка эмодзи стоит near середины строки ввода — 330px
-   панель, растущая от неё вправо-налево (right: 0), вылезала бы за левый
-   край экрана. На мобильном центрируем её по низу экрана вместо этого */
 @media (max-width: 480px) {
   .emojiPanel {
     position: fixed;
@@ -1353,7 +1282,6 @@
   }
 }
 
-/* пока библиотека подгружается — панель уже занимает своё место */
 .emojiLoading {
   display: flex;
   align-items: center;
@@ -1370,10 +1298,6 @@
 
   font-size: 13px;
 }
-
-/* =========================
-   PHOTO ATTACHMENTS
-========================= */
 
 .imageLink {
   display: inline-block;
@@ -1448,11 +1372,6 @@
   }
 }
 
-/* =========================
-   TYPING INDICATOR
-========================= */
-
-/* высота зарезервирована всегда, чтобы лента не прыгала при появлении надписи */
 .typingBar {
   display: flex;
   align-items: center;
@@ -1503,10 +1422,6 @@
     transform: translateY(-3px);
   }
 }
-
-/* =========================
-   REPORT MODAL
-========================= */
 
 .reportQuote {
   display: flex;
@@ -1603,13 +1518,10 @@
   cursor: not-allowed;
 }
 
-/* названия категорий в панели эмодзи: библиотека делает каждое слово с
-   заглавной ("Смайлики И Люди") — оставляем как в словаре */
 .emojiPanel :global(.epr-emoji-category-label) {
   text-transform: none;
 }
 
-/* текст AI-сводки */
 .summaryBody {
   flex: 1;
   min-width: 0;
@@ -1617,7 +1529,6 @@
   overflow-y: auto;
 }
 
-/* переносы строк из ответа модели ("- пункт") сохраняем как есть */
 .summaryText {
   white-space: pre-line;
 }
@@ -1628,4 +1539,25 @@
 
   color: var(--loc-text-tertiary);
   font-size: 11px;
+}
+
+.menuBadge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+
+  border-radius: 999px;
+  background: var(--loc-accent);
+  color: #0f1115;
+
+  font-size: 10px;
+  font-weight: 700;
 }

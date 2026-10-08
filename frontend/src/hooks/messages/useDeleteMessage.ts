@@ -7,9 +7,6 @@ interface IBody {
   messageId: number;
 }
 
-// удалить своё сообщение (сервер сам проверяет, что оно моё). Сокет
-// useRoomSocket уберёт его у остальных участников, а здесь — сразу у себя,
-// не дожидаясь эха от сокета
 export const useDeleteMessage = () => {
   const queryClient = useQueryClient();
 

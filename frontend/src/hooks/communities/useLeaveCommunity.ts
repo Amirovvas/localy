@@ -11,15 +11,11 @@ export const useLeaveCommunity = () => {
       return communityId;
     },
     onSuccess: (communityId) => {
-      // убираем сообщество из "моих" сразу, не дожидаясь перезапроса — иначе
-      // Chat.tsx мог бы выбрать только что покинутое сообщество как "первое"
       queryClient.setQueryData<ChatCommunity[]>(["communities", "mine"], (prev) =>
         prev?.filter((community) => community.id !== communityId),
       );
       queryClient.removeQueries({ queryKey: ["communities", communityId] });
-      // покинутое сообщество снова доступно для вступления
       queryClient.invalidateQueries({ queryKey: ["communities", "discover"] });
-      // страница профиля показывает свой список сообществ
       queryClient.invalidateQueries({ queryKey: ["profile"] });
     },
   });

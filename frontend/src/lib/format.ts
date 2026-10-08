@@ -36,7 +36,6 @@ export const formatEventWhen = (iso: string) => {
 export const formatMessageTime = (iso: string) =>
   new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
 
-// "1 участник", "2 участника", "5 участников", "21 участник"
 export const formatMembers = (count: number) => {
   const mod10 = count % 10;
   const mod100 = count % 100;
@@ -45,3 +44,14 @@ export const formatMembers = (count: number) => {
   else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) word = "участника";
   return `${count.toLocaleString("ru-RU")} ${word}`;
 };
+
+export const pluralCommunities = (count: number) => {
+  const lastTwo = count % 100;
+  const last = count % 10;
+  if (lastTwo >= 11 && lastTwo <= 14) return "сообществ";
+  if (last === 1) return "сообщество";
+  if (last >= 2 && last <= 4) return "сообщества";
+  return "сообществ";
+};
+
+export const formatUnread = (count: number) => (count > 99 ? "99+" : String(count));

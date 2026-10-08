@@ -6,6 +6,7 @@ import {
   ChevronDown,
   CornerUpLeft,
   Flag,
+  Mail,
   Info,
   Menu,
   Loader2,
@@ -25,6 +26,8 @@ import css from "./chatArea.module.css";
 import { Avatar } from "@/components/layout/Avatar";
 import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import StartDirectModal from "./StartDirectModal";
+import EmptyRoom from "./EmptyRoom";
 import { useGetMessages } from "@/hooks/messages/useGetMessages";
 import { useSendMessage } from "@/hooks/messages/useSendMessage";
 import { useDeleteMessage } from "@/hooks/messages/useDeleteMessage";
@@ -35,6 +38,8 @@ import { useTogglePin } from "@/hooks/messages/useTogglePin";
 import { usePinnedMessages } from "@/hooks/messages/usePinnedMessages";
 import { useSearchMessages } from "@/hooks/messages/useSearchMessages";
 import { useReadState } from "@/hooks/messages/useReadState";
+import { useUnreadSummary } from "@/hooks/messages/useUnreadSummary";
+import { formatUnread } from "@/lib/format";
 import { useMarkRoomRead } from "@/hooks/messages/useMarkRoomRead";
 import {
   ACCEPTED_IMAGE_TYPES,
@@ -51,8 +56,6 @@ import { REACTION_EMOJIS } from "@/lib/chat";
 import { formatMembers } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/apiError";
 
-// библиотека эмодзи с русским словарём тяжёлая — грузим только при первом
-// открытии панели, а не в основной бандл чата
 const EmojiPickerPanel = dynamic(() => import("./EmojiPickerPanel"), {
   ssr: false,
   loading: () => <div className={css.emojiLoading}>Загрузка...</div>,
@@ -76,11 +79,9 @@ const REPORT_REASONS: { value: ReportReason; label: string }[] = [
 const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInfo }: IProps) => {
   const { data: messages = [], isLoading: messagesLoading } = useGetMessages(room.id);
   useRoomSocket(room.id);
-  // на телефоне своя системная клавиатура эмодзи — отдельная панель тут не нужна
   const isMobile = useIsMobile();
+  const unreadTotal = useUnreadSummary(room.id).total;
 
-  // "Непрочитанные сообщения": при входе в комнату считаем, где был маркер
-  // в прошлый раз, и один раз ставим разделитель + прокручиваем к нему
   const {
     data: lastReadMessageId,
     isLoading: readStateLoading,
@@ -97,22 +98,16 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   const { typingIds, notifyTyping, stopTyping } = useTyping(room.id);
 
   const [draft, setDraft] = useState("");
-  // сообщение, на которое пользователь сейчас отвечает (баннер над полем ввода)
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
-  // подсветка оригинала после клика по цитате
   const [highlightedId, setHighlightedId] = useState<number | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // прикреплённое фото: сначала грузим в Storage, в сообщение уходит готовый URL
   const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
-  // ошибка отправки сообщения (лимит против спама, запрещённые слова)
   const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadImage = useUploadImage();
-  // панель эмодзи у поля ввода
   const [emojiOpen, setEmojiOpen] = useState(false);
   const emojiWrapRef = useRef<HTMLDivElement>(null);
-  // жалоба на сообщение: выбранное сообщение, причина, комментарий, ответ сервера
   const [reportTarget, setReportTarget] = useState<ChatMessage | null>(null);
   const [reportReason, setReportReason] = useState<ReportReason | null>(null);
   const [reportComment, setReportComment] = useState("");
@@ -121,23 +116,19 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   const reportMessage = useReportMessage();
   const [summaryOpen, setSummaryOpen] = useState(false);
   const summary = useSummary();
-  // сообщение, у которого сейчас открыт выбор эмодзи
   const [pickerFor, setPickerFor] = useState<number | null>(null);
   const toggleReaction = useToggleReaction();
-  // своё сообщение, которое сейчас предложено удалить (подтверждение перед удалением)
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
+  const [directTarget, setDirectTarget] = useState<number | null>(null);
   const deleteMessage = useDeleteMessage();
-  // своё сообщение, которое сейчас редактируется прямо в списке (без модалки)
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
   const editMessage = useEditMessage();
 
-  // закреплённые сообщения — отдельная полоска над списком, сворачивается
   const [pinnedOpen, setPinnedOpen] = useState(false);
   const { data: pinnedMessages = [] } = usePinnedMessages(room.id);
   const togglePin = useTogglePin();
 
-  // поиск по сообщениям текущей комнаты
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
@@ -151,20 +142,11 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     debouncedSearchQuery,
   );
 
-  // один раз при входе в комнату: ставим разделитель на первое непрочитанное
-  // сообщение и прокручиваем к нему (если непрочитанных нет — вниз, к последним)
   useEffect(() => {
     if (hasInitializedReadRef.current) return;
-    // readStateFetching — ждём, пока отметка прочитанного не станет
-    // актуальной (а не просто "не первая загрузка"), иначе можно на миг
-    // схватить устаревшее значение из кэша react-query и промахнуться
-    // с разделителем
     if (messagesLoading || readStateLoading || readStateFetching) return;
     hasInitializedReadRef.current = true;
 
-    // null (ещё ни разу не открывал комнату) считаем как "прочитано до 0" —
-    // тогда при самом первом заходе вся история тоже помечается непрочитанной.
-    // Свои же сообщения не могут быть "непрочитанными" — учитываем только чужие
     const readMarker = lastReadMessageId ?? 0;
     const firstUnread = messages.find(
       (message) => message.id > readMarker && message.authorId !== currentUserAnonId,
@@ -183,8 +165,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messagesLoading, readStateLoading, readStateFetching]);
 
-  // и при выходе из комнаты — чтобы сообщения, пришедшие, пока здесь сидели,
-  // не считались непрочитанными при следующем заходе
   useEffect(() => {
     return () => {
       markRoomRead.mutate(room.id);
@@ -192,8 +172,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room.id]);
 
-  // "отметить сообщение как событие" — никакого автоопределения по тексту:
-  // пользователь сам решает, что это реальный анонс, и сам вводит дату/время
   const [eventDraft, setEventDraft] = useState<{
     title: string;
     place: string;
@@ -203,7 +181,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
 
   const title = `# ${room.name}`;
 
-  // до трёх — по номерам, дальше просто "несколько человек"
   const typingLabel =
     typingIds.length === 1
       ? `Аноним #${typingIds[0]} печатает`
@@ -211,7 +188,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         ? `Аноним #${typingIds[0]} и Аноним #${typingIds[1]} печатают`
         : "Несколько человек печатают";
 
-  // Кнопка AI Summary: при открытии просим сводку у сервера, при повторном клике закрываем
   const handleSummaryClick = () => {
     if (summaryOpen) {
       setSummaryOpen(false);
@@ -228,7 +204,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   const handleSend = (event: React.FormEvent) => {
     event.preventDefault();
     const text = draft.trim();
-    // фото можно отправить и без подписи
     if ((!text && !attachmentUrl) || uploadImage.isPending) return;
 
     stopTyping();
@@ -244,7 +219,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         replyToPreview: replyTo ?? undefined,
       },
       {
-        // сообщение не ушло — возвращаем текст в поле и объясняем причину
         onError: (error) => {
           setSendError(getApiErrorMessage(error) ?? "Не удалось отправить сообщение");
           setDraft((current) => current || text);
@@ -256,7 +230,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     setAttachmentUrl(null);
     setAttachError(null);
 
-    // прокручиваем вниз, чтобы своё отправленное сообщение сразу было видно
     requestAnimationFrame(() => {
       if (messagesRef.current) {
         messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
@@ -301,7 +274,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    // сбрасываем value, чтобы можно было выбрать тот же файл повторно
     event.target.value = "";
     if (!file) return;
 
@@ -323,12 +295,8 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     });
   };
 
-  // вставляем эмодзи в позицию курсора (или заменяем выделенный фрагмент),
-  // панель остаётся открытой — можно добавить несколько подряд
   const insertEmoji = (emoji: string) => {
     const input = inputRef.current;
-    // текст берём прямо из поля, а не из state: обработчик клика живёт внутри
-    // библиотеки эмодзи и может держать устаревшее замыкание с прошлым draft
     const current = input?.value ?? draft;
     const start = input?.selectionStart ?? current.length;
     const end = input?.selectionEnd ?? current.length;
@@ -336,15 +304,12 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     notifyTyping();
 
     const caret = start + emoji.length;
-    // React перезаписывает value уже после этого, и браузер ставит курсор в
-    // конец — возвращаем его сразу после коммита
     setTimeout(() => {
       input?.focus();
       input?.setSelectionRange(caret, caret);
     }, 0);
   };
 
-  // закрываем панель по клику снаружи и по Escape
   useEffect(() => {
     if (!emojiOpen) return;
 
@@ -363,7 +328,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     };
   }, [emojiOpen]);
 
-  // закрываем поиск по клику снаружи и по Escape (тот же приём, что у эмодзи)
   useEffect(() => {
     if (!searchOpen) return;
 
@@ -382,6 +346,16 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     };
   }, [searchOpen]);
 
+  const handlePickStarter = (text: string) => {
+    setDraft(text);
+    setTimeout(() => {
+      const input = inputRef.current;
+      if (!input) return;
+      input.focus();
+      input.setSelectionRange(text.length, text.length);
+    }, 0);
+  };
+
   const startReply = (message: ChatMessage) => {
     setReplyTo(message);
     inputRef.current?.focus();
@@ -389,7 +363,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
 
   const jumpToMessage = (messageId: number) => {
     const element = document.getElementById(`msg-${messageId}`);
-    // оригинал мог не попасть в загруженные 50 сообщений — тогда просто ничего
     if (!element) return;
     element.scrollIntoView({ behavior: "smooth", block: "center" });
     setHighlightedId(messageId);
@@ -417,7 +390,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
       { roomId: room.id, messageId: deleteTarget.id },
       {
         onSuccess: () => {
-          // если удалили сообщение, на которое сами же собирались отвечать
           setReplyTo((current) => (current?.id === deleteTarget.id ? null : current));
           setDeleteTarget(null);
         },
@@ -459,8 +431,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         communityId: community.id,
         title: eventDraft.title.trim(),
         place: eventDraft.place.trim(),
-        // datetime-local без часового пояса — new Date парсит его как
-        // локальное время браузера, toISOString переводит в UTC для backend
         startsAt: new Date(eventDraft.startsAt).toISOString(),
       },
       { onSuccess: () => setEventDraft(null) },
@@ -477,6 +447,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           aria-label="Открыть меню"
         >
           <Menu size={18} />
+          {unreadTotal > 0 && <span className={css.menuBadge}>{formatUnread(unreadTotal)}</span>}
         </button>
 
         <span className={css.communityIcon}>
@@ -641,12 +612,11 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         )}
 
         {!messagesLoading && messages.length === 0 && (
-          <p className={css.emptyState}>Сообщений пока нет. Будьте первым, кто напишет в {title}.</p>
+          <EmptyRoom roomName={room.name} anonId={currentUserAnonId} onPick={handlePickStarter} />
         )}
 
         {messages.map((message) => {
           const reactions = message.reactions ?? [];
-          // свои сообщения — справа, чужие — слева (как в обычных мессенджерах)
           const isOwn = message.authorId === currentUserAnonId;
           return (
             <div key={message.id}>
@@ -818,14 +788,24 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className={css.hoverBtn}
-                      title="Пожаловаться"
-                      onClick={() => openReport(message)}
-                    >
-                      <Flag size={14} />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className={css.hoverBtn}
+                        title="Написать лично"
+                        onClick={() => setDirectTarget(message.authorId)}
+                      >
+                        <Mail size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className={css.hoverBtn}
+                        title="Пожаловаться"
+                        onClick={() => openReport(message)}
+                      >
+                        <Flag size={14} />
+                      </button>
+                    </>
                   )}
 
                   {pickerFor === message.id && (
@@ -968,6 +948,14 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           <Send size={16} />
         </button>
       </form>
+
+      {directTarget !== null && (
+        <StartDirectModal
+          anonId={directTarget}
+          communityId={community.id}
+          onClose={() => setDirectTarget(null)}
+        />
+      )}
 
       {deleteTarget && (
         <ConfirmDialog

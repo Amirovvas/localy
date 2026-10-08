@@ -2,8 +2,6 @@ import { randomUUID } from "crypto";
 import { uploadImage } from "../plugins/storage";
 import { apiErrors } from "../utils/apiErrors";
 
-// Content-Type в запросе присылает клиент и он подделывается, поэтому по
-// сигнатуре (magic bytes) определяем настоящий формат файла
 const detectImageType = (buffer: Buffer): { mime: string; ext: string } | null => {
   if (buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
     return { mime: "image/jpeg", ext: "jpg" };
@@ -30,8 +28,6 @@ export const uploadChatImageService = async (file?: Express.Multer.File) => {
   const type = detectImageType(file.buffer);
   if (!type) throw apiErrors.badRequest("Файл не является изображением JPG, PNG или WebP");
 
-  // имя — случайный uuid: ни id пользователя, ни исходное имя файла в
-  // публичную ссылку не попадают (чат анонимный)
   const path = `chat/${randomUUID()}.${type.ext}`;
   const url = await uploadImage(path, file.buffer, type.mime);
 

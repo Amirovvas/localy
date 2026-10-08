@@ -13,8 +13,6 @@ interface IResponse {
   data: { message_id: number; reactions: ChatReaction[] };
 }
 
-// поставить / снять реакцию; ответ содержит актуальные счётчики вместе с
-// флагом mine, поэтому кэш обновляется по факту, а не оптимистично
 export const useToggleReaction = () => {
   const queryClient = useQueryClient();
 

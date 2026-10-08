@@ -11,6 +11,8 @@ import { useGetMyCommunities } from "@/hooks/communities/useGetMyCommunities";
 import { useGetCommunity } from "@/hooks/communities/useGetCommunity";
 import { useLeaveCommunity } from "@/hooks/communities/useLeaveCommunity";
 import { useClearChat } from "@/hooks/messages/useClearChat";
+import { useUnreadSummary } from "@/hooks/messages/useUnreadSummary";
+import { formatUnread } from "@/lib/format";
 
 const Chat = () => {
   const { data: profile } = useProfile();
@@ -18,10 +20,6 @@ const Chat = () => {
 
   const [communityId, setCommunityId] = useState<number | null>(null);
   const [roomId, setRoomId] = useState<number | null>(null);
-  // isSidebarOpen — выезжающая панель поверх чата на мобильном; isSidebarCollapsed —
-  // схлопывание сайдбара на десктопе (просто освобождает ширину, без наплыва).
-  // Обе кнопки-гамбургеры переключают их разом — на любой ширине экрана
-  // реагирует только одна из них, вторая ни на что не влияет (см. media query)
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isInfoOpen, setInfoOpen] = useState(false);
@@ -30,8 +28,16 @@ const Chat = () => {
   const [isJoinOpen, setJoinOpen] = useState(false);
   const leaveCommunity = useLeaveCommunity();
   const clearChat = useClearChat();
+  const unreadTotal = useUnreadSummary(roomId).total;
 
-  // выбираем первое сообщество, как только пришёл список "моих"
+  useEffect(() => {
+    const base = "Localy — чат сообщества";
+    document.title = unreadTotal > 0 ? `(${formatUnread(unreadTotal)}) ${base}` : base;
+    return () => {
+      document.title = base;
+    };
+  }, [unreadTotal]);
+
   useEffect(() => {
     if (communityId === null && myCommunities && myCommunities.length > 0) {
       setCommunityId(myCommunities[0].id);
@@ -40,8 +46,6 @@ const Chat = () => {
 
   const { data: community, isLoading: communityLoading } = useGetCommunity(communityId);
 
-  // выбираем первую комнату сообщества (или сохраняем текущий выбор, если он
-  // всё ещё существует — например, после фонового обновления данных)
   useEffect(() => {
     if (!community) return;
     setRoomId((prev) => {
@@ -75,8 +79,6 @@ const Chat = () => {
 
     leaveCommunity.mutate(communityId, {
       onSuccess: () => {
-        // переходим в первое из оставшихся сообществ (список "моих" уже обновлён);
-        // если их нет — Chat покажет экран "вы не состоите ни в одном"
         const remaining = (myCommunities ?? []).filter((item) => item.id !== communityId);
         setCommunityId(remaining[0]?.id ?? null);
         setRoomId(null);

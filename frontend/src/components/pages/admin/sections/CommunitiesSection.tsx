@@ -43,7 +43,6 @@ interface FormState {
   city: string;
   description: string;
   status: CommunityStatus;
-  // координаты вводятся текстом (пусто — без координат)
   lat: string;
   lng: string;
 }
@@ -118,7 +117,6 @@ const CommunitiesSection = () => {
     event.preventDefault();
     if (!formData.name.trim() || !formData.city.trim()) return;
 
-    // пустое поле — нет координат (null), иначе обычное число
     const lat = formData.lat.trim() === "" ? null : Number(formData.lat.replace(",", "."));
     const lng = formData.lng.trim() === "" ? null : Number(formData.lng.replace(",", "."));
     if (

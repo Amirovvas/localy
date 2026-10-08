@@ -14,8 +14,6 @@ interface IResponse {
   data: RawMessage;
 }
 
-// редактировать можно только своё сообщение (сервер сам проверяет). Сокет
-// useRoomSocket обновит его у остальных участников, а здесь — сразу у себя
 export const useEditMessage = () => {
   const queryClient = useQueryClient();
 

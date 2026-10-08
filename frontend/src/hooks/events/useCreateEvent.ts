@@ -17,8 +17,6 @@ export const useCreateEvent = () => {
       return res.data.data;
     },
     onSuccess: (_data, variables) => {
-      // событие сразу подтягивается в "Предстоящие события" в InfoPanel —
-      // тот же community-запрос, что и для списка комнат/локаций
       queryClient.invalidateQueries({ queryKey: ["communities", variables.communityId] });
     },
   });

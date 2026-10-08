@@ -23,8 +23,6 @@ export const useGetCommunity = (id: number | null) =>
   useQuery({
     queryKey: ["communities", id],
     enabled: id !== null,
-    // при переключении сообщества держим предыдущие данные на экране, а не
-    // мигаем полноэкранным "Загрузка..." из Chat.tsx
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const res = await api.get<IResponse>(`/communities/${id}`);

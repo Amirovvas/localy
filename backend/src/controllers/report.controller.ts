@@ -25,8 +25,6 @@ export const reportMessageController = async (
   }
 };
 
-// ---- Admin Panel ----
-
 export const listReportsController = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const status = typeof req.query.status === "string" ? req.query.status : undefined;

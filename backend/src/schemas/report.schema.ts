@@ -7,7 +7,6 @@ export const createReportSchema = z
     reason: z.enum(REPORT_REASONS, { message: "Выберите причину жалобы" }),
     comment: z.string().trim().max(500, "Комментарий слишком длинный (максимум 500 символов)").default(""),
   })
-  // при "Другое" причина неочевидна — без пояснения модератору нечего проверять
   .refine((data) => data.reason !== "other" || data.comment.length >= 3, {
     message: "Опишите, что не так с сообщением",
     path: ["comment"],

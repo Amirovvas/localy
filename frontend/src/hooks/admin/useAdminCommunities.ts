@@ -7,7 +7,6 @@ interface IResponse {
   data: AdminCommunity[];
 }
 
-// список ВСЕХ сообществ (любой статус) — для раздела "Сообщества" в Admin Panel
 export const useAdminCommunities = () =>
   useQuery({
     queryKey: ["admin", "communities"],

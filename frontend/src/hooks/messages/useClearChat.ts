@@ -2,9 +2,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/api";
 import type { ChatMessage } from "@/lib/chat";
 
-// очистить чат "у себя": сервер запоминает момент очистки для (пользователь,
-// комната) и больше не отдаёт этому пользователю сообщения до этого момента.
-// У остальных участников комнаты история остаётся как была
 export const useClearChat = () => {
   const queryClient = useQueryClient();
 

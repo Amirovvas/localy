@@ -1,7 +1,5 @@
 import type { CommunityCategory } from "@/lib/mockData";
 
-// ---- Сообщества ----
-
 export type CommunityStatus = "active" | "pending" | "archived";
 
 export const COMMUNITY_STATUS_LABELS: Record<CommunityStatus, string> = {
@@ -29,8 +27,6 @@ export interface AdminCommunity {
   rooms: AdminCommunityRoom[];
 }
 
-// ---- Пользователи ----
-
 export interface AdminUser {
   id: number;
   name: string;
@@ -42,8 +38,6 @@ export interface AdminUser {
   created_at: string;
   communities: string[];
 }
-
-// ---- Жалобы ----
 
 export type ReportStatus = "pending" | "reviewing" | "resolved" | "dismissed";
 

@@ -7,8 +7,6 @@ interface IResponse {
   data: AdminReport;
 }
 
-// после любого действия над жалобой список, история и сама жалоба должны
-// обновиться — этот хелпер вызывается в onSuccess каждой мутации ниже
 const invalidateReport = (queryClient: ReturnType<typeof useQueryClient>, id: number) => {
   queryClient.invalidateQueries({ queryKey: ["admin", "reports"] });
   queryClient.invalidateQueries({ queryKey: ["admin", "reportEvents", id] });

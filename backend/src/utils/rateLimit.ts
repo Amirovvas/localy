@@ -1,8 +1,5 @@
 import { apiErrors } from "./apiErrors";
 
-// Простой лимит "не больше N сообщений за окно времени" на пользователя —
-// против спама. Счётчик в памяти процесса: для одного инстанса backend (как
-// сейчас на Render) этого достаточно; при нескольких инстансах понадобится Redis
 const MAX_MESSAGES = 5;
 const WINDOW_MS = 10_000;
 
@@ -24,7 +21,6 @@ export const assertMessageRate = (userId: number) => {
   sentAt.set(userId, recent);
 };
 
-// чистим записи тех, кто давно молчит, чтобы Map не рос бесконечно
 setInterval(() => {
   const now = Date.now();
   for (const [userId, times] of sentAt) {

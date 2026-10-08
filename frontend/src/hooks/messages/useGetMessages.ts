@@ -39,8 +39,6 @@ export const mapMessage = (raw: RawMessage): ChatMessage => ({
       : undefined,
 });
 
-// живые обновления теперь приходят через WebSocket (useRoomSocket) — здесь
-// только первичная загрузка истории комнаты
 export const useGetMessages = (roomId: number | null) =>
   useQuery({
     queryKey: ["messages", roomId],

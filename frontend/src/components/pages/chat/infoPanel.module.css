@@ -32,10 +32,6 @@
   }
 }
 
-/* =========================
-   HEADER
-========================= */
-
 .header {
   position: relative;
 
@@ -159,10 +155,6 @@
   text-align: left;
 }
 
-/* =========================
-   SECTIONS
-========================= */
-
 .section {
   padding: 16px;
   border-bottom: 1px solid var(--loc-border);
@@ -206,15 +198,10 @@
   gap: 8px;
 }
 
-/* текст-подсказка, когда в списке пусто (например, "событий пока нет") */
 .emptyHint {
   color: var(--loc-text-tertiary);
   font-size: 13px;
 }
-
-/* =========================
-   EVENTS
-========================= */
 
 .eventList {
   display: flex;
@@ -294,10 +281,6 @@
   text-overflow: ellipsis;
 }
 
-/* =========================
-   PRIVACY NOTE
-========================= */
-
 .privacyNote {
   display: flex;
   align-items: center;
@@ -350,14 +333,10 @@
   background: #fef2f2;
 }
 
-/* кнопка выхода уже прижата к низу через auto — заметку о приватности
-   держим сразу под ней, а не ещё раз отталкиваем */
 .leaveBtn + .privacyNote {
   margin-top: 12px;
 }
 
-/* когда кнопок две (очистить чат + покинуть), auto-margin забирает всё
-   свободное место только у первой — второй нужен свой небольшой отступ */
 .leaveBtn + .leaveBtn {
   margin-top: 8px;
 }

@@ -1,6 +1,6 @@
 import { pool } from "../plugins/pg";
 import { apiErrors } from "../utils/apiErrors";
-import { getIO, roomChannel } from "../plugins/socket";
+import { getIO, roomChannel, userChannel } from "../plugins/socket";
 import { reactionsSelect } from "./reaction.service";
 import { assertOwnAttachment, removeImageByUrl } from "../plugins/storage";
 import { assertNoBannedWords } from "../utils/bannedWords";
@@ -15,10 +15,6 @@ interface ICreateBody {
   replyToId?: number;
 }
 
-// автор (и автор цитируемого сообщения) виден другим только как anon_id —
-// реальные имя/почта сюда не попадают. Цитата обрезается до 200 символов,
-// чтобы не раздувать каждое сообщение полным текстом оригинала
-// userParam — плейсхолдер с id читающего пользователя, нужен для флага reactions[].mine
 const selectMessage = (userParam: string) => `
   select
     m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at, u.anon_id,
@@ -39,8 +35,6 @@ export const listMessagesService = async (
   before?: string,
 ) => {
   const params: any[] = [roomId, userId];
-  // сообщения, очищенные этим пользователем у себя, не отдаём — у остальных
-  // участников комнаты они остаются видны как обычно
   let query = `
     ${selectMessage("$2")}
     where m.room_id = $1
@@ -59,8 +53,51 @@ export const listMessagesService = async (
   query += ` order by m.created_at desc limit $${params.length}`;
 
   const result = await pool.query(query, params);
-  // отдаём хронологически (старые -> новые), как отображается в чате
   return result.rows.reverse();
+};
+
+export const listUnreadCountsService = async (userId: number) => {
+  const result = await pool.query(
+    `
+    select r.id as room_id, r.community_id, u.unread
+    from rooms r
+    join community_members cm on cm.community_id = r.community_id and cm.user_id = $1
+    left join room_reads rr on rr.user_id = $1 and rr.room_id = r.id
+    cross join lateral (
+      select count(*)::int as unread from (
+        select 1 from messages m
+        where m.room_id = r.id
+          and m.user_id <> $1
+          and m.id > coalesce(rr.last_read_message_id, 0)
+          and m.created_at > case when rr.last_read_message_id is null then cm.joined_at else '-infinity'::timestamptz end
+          and m.created_at > coalesce(
+            (select cleared_at from message_clears mc where mc.user_id = $1 and mc.room_id = r.id),
+            '-infinity'
+          )
+        limit 100
+      ) counted
+    ) u
+    where u.unread > 0
+    `,
+    [userId],
+  );
+  return result.rows;
+};
+
+const notifyRoomMembers = async (roomId: number, senderId: number) => {
+  const io = getIO();
+  if (!io) return;
+  const members = await pool.query(
+    `
+    select cm.user_id from rooms r
+    join community_members cm on cm.community_id = r.community_id
+    where r.id = $1 and cm.user_id <> $2
+    `,
+    [roomId, senderId],
+  );
+  for (const member of members.rows) {
+    io.to(userChannel(member.user_id)).emit("room:unread", { roomId });
+  }
 };
 
 export const clearRoomMessagesService = async (roomId: number, userId: number) => {
@@ -74,8 +111,6 @@ export const clearRoomMessagesService = async (roomId: number, userId: number) =
   );
 };
 
-// null — пользователь ещё не открывал эту комнату, фронт в этом случае не
-// показывает разделитель "Непрочитанные сообщения" (не с чем сравнивать)
 export const getReadStateService = async (roomId: number, userId: number) => {
   const result = await pool.query(
     `select last_read_message_id from room_reads where user_id = $1 and room_id = $2`,
@@ -102,7 +137,6 @@ export const createMessageService = async (body: ICreateBody) => {
   assertNoBannedWords(body.text);
   assertOwnAttachment(body.attachment);
 
-  // отвечать можно только на сообщение из этой же комнаты
   if (body.replyToId) {
     const target = await pool.query(`select room_id from messages where id = $1`, [
       body.replyToId,
@@ -113,10 +147,6 @@ export const createMessageService = async (body: ICreateBody) => {
   }
 
   try {
-    // insert и выборку полной строки (с автором и цитатой) делаем одним
-    // запросом вместо двух — лишний round-trip к базе заметен в задержке
-    // отправки сообщения. Реакций у только что созданного сообщения быть не
-    // может, поэтому вместо reactionsSelect() просто пустой массив
     const full = await pool.query(
       `
       with inserted as (
@@ -146,10 +176,11 @@ export const createMessageService = async (body: ICreateBody) => {
     );
     const fullMessage = full.rows[0];
 
-    // живой пуш всем, кто сейчас открыл эту комнату
     getIO()
       ?.to(roomChannel(body.roomId))
       .emit("message:new", { ...fullMessage, room_id: body.roomId });
+
+    notifyRoomMembers(body.roomId, body.userId).catch(() => undefined);
 
     return fullMessage;
   } catch (error: any) {
@@ -160,7 +191,6 @@ export const createMessageService = async (body: ICreateBody) => {
 
 export const editMessageService = async (id: number, userId: number, text: string) => {
   assertNoBannedWords(text);
-  // пока разрешаем редактировать только своё сообщение, как и удаление
   const updated = await pool.query(
     `update messages set text = $1, edited_at = now() where id = $2 and user_id = $3 returning room_id`,
     [text, id, userId],
@@ -196,8 +226,6 @@ export const togglePinMessageService = async (id: number, userId: number) => {
   return fullMessage;
 };
 
-// закреплённые сообщения видны всем участникам комнаты независимо от того,
-// очищал ли кто-то историю у себя — это отдельная, "поверх" обычного списка
 export const listPinnedMessagesService = async (roomId: number, userId: number) => {
   const result = await pool.query(
     `${selectMessage("$2")} where m.room_id = $1 and m.pinned_at is not null order by m.pinned_at desc`,
@@ -207,7 +235,6 @@ export const listPinnedMessagesService = async (roomId: number, userId: number) 
 };
 
 export const searchMessagesService = async (roomId: number, userId: number, query: string) => {
-  // экранируем спецсимволы ilike, чтобы "%" и "_" в поиске искались буквально
   const escaped = query.replace(/[\\%_]/g, "\\$&");
   const result = await pool.query(
     `
@@ -227,8 +254,6 @@ export const searchMessagesService = async (roomId: number, userId: number, quer
 };
 
 export const deleteMessageService = async (id: number, userId: number) => {
-  // пока разрешаем удалять только своё сообщение — модерация чужих сообщений
-  // (через Admin Panel / роль admin) уже есть отдельно, в report.service.ts
   const result = await pool.query(
     `delete from messages where id = $1 and user_id = $2 returning id, room_id, attachment`,
     [id, userId],
@@ -237,13 +262,9 @@ export const deleteMessageService = async (id: number, userId: number) => {
     throw apiErrors.notFound("Сообщение не найдено или у вас нет прав на удаление");
   }
 
-  // остальным участникам комнаты — живым пушем, чтобы сообщение пропало у
-  // всех сразу, а не только после перезагрузки
   const { room_id: roomId } = result.rows[0];
   getIO()?.to(roomChannel(roomId)).emit("message:deleted", { room_id: roomId, id });
 
-  // картинка удалённого сообщения больше не нужна — убираем и из Storage
-  // (если на неё не ссылается другое сообщение)
   const { attachment } = result.rows[0];
   if (attachment) {
     const stillUsed = await pool.query(`select 1 from messages where attachment = $1 limit 1`, [

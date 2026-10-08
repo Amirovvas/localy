@@ -1,7 +1,3 @@
-/* =========================
-   PAGE HEADER
-========================= */
-
 .pageHeader {
   display: flex;
   align-items: flex-start;
@@ -53,10 +49,6 @@
 .primaryBtn:hover {
   background: var(--loc-accent-hover);
 }
-
-/* =========================
-   TOOLBAR
-========================= */
 
 .toolbar {
   display: flex;
@@ -145,10 +137,6 @@
   border-color: var(--loc-accent);
   color: #ffffff;
 }
-
-/* =========================
-   CARD / TABLE
-========================= */
 
 .card {
   background: var(--loc-surface);
@@ -242,10 +230,6 @@
   color: var(--loc-accent);
 }
 
-/* =========================
-   BADGES
-========================= */
-
 .badge {
   display: inline-flex;
   align-items: center;
@@ -292,10 +276,6 @@
   background: currentColor;
 }
 
-/* =========================
-   ACTIONS
-========================= */
-
 .actionsCell {
   display: flex;
   align-items: center;
@@ -336,10 +316,6 @@
   color: #15803d;
 }
 
-/* =========================
-   EMPTY STATE
-========================= */
-
 .emptyState {
   padding: 48px 20px;
 
@@ -347,10 +323,6 @@
   font-size: 13px;
   text-align: center;
 }
-
-/* =========================
-   FORM (create / edit modals)
-========================= */
 
 .form {
   display: flex;
@@ -433,10 +405,6 @@
 .secondaryBtn:hover {
   background: var(--loc-surface-soft);
 }
-
-/* =========================
-   VIEW MODAL DETAIL
-========================= */
 
 .detailGrid {
   display: grid;

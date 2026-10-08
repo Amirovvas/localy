@@ -1,8 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { apiErrors } from "../utils/apiErrors";
 
-// ставится ПОСЛЕ authMiddleware — он уже проверил в базе is_admin и положил
-// его в req.user.isAdmin, поэтому здесь отдельный запрос не нужен
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
   if (!(req as any).user?.isAdmin) {
     const error = apiErrors.forbidden("Доступ только для администраторов");

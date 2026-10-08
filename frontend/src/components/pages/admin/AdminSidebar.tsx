@@ -66,8 +66,6 @@ const AdminSidebar = ({ section, onSelect, isOpen, onClose }: IProps) => {
       </nav>
 
       <div className={css.footer}>
-        {/* у аккаунта администратора нет доступа к обычному чату Localy —
-            поэтому здесь нет ссылки "назад", только выход из аккаунта */}
         <button
           type="button"
           className={css.backLink}

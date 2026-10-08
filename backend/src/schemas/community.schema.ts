@@ -2,7 +2,6 @@ import z from "zod";
 
 const categoryEnum = z.enum(["university", "school", "district", "residential", "city"]);
 const statusEnum = z.enum(["active", "pending", "archived"]);
-// координаты необязательны; null — убрать координаты у сообщества
 const latSchema = z.number().min(-90).max(90).nullable();
 const lngSchema = z.number().min(-180).max(180).nullable();
 

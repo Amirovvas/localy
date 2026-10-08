@@ -8,8 +8,8 @@ let io: Server | null = null;
 
 export const roomChannel = (roomId: number | string) => `room:${roomId}`;
 
-// message.service.ts и другие сервисы дёргают getIO()?.to(...).emit(...) —
-// getIO() возвращает null, пока initSocket ещё не вызван (например, в тестах)
+export const userChannel = (userId: number | string) => `user:${userId}`;
+
 export const getIO = () => io;
 
 export const initSocket = (server: HttpServer) => {
@@ -20,16 +20,12 @@ export const initSocket = (server: HttpServer) => {
     },
   });
 
-  // тот же access-токен, что и в authMiddleware для REST — сокет открывается
-  // уже залогиненным пользователем, отдельного логина через сокет нет
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth?.token as string | undefined;
       if (!token) throw new Error("unauthorized");
 
       const decoded = jwt.verify(token, access_secret) as { id: number };
-      // anon_id нужен для индикатора "печатает" — другим участникам
-      // показывается только он, никогда имя или почта
       const result = await pool.query(`select anon_id, is_blocked from users where id = $1`, [
         decoded.id,
       ]);
@@ -44,8 +40,8 @@ export const initSocket = (server: HttpServer) => {
   });
 
   io.on("connection", (socket) => {
-    // "печатает": пересылаем остальным участникам той же комнаты.
-    // Отправлять можно только в комнату, в которой сокет реально состоит
+    socket.join(userChannel(socket.data.user.id));
+
     socket.on("typing", (payload: { roomId?: number; isTyping?: boolean }) => {
       if (!payload || !payload.roomId) return;
 

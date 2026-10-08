@@ -1,13 +1,16 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Hash, Plus, Settings, X } from "lucide-react";
+import { ChevronDown, Hash, MessageSquare, Plus, Settings, X } from "lucide-react";
 import css from "./sidebar.module.css";
 import { LogoMark } from "@/components/layout/Logo";
 import { Avatar } from "@/components/layout/Avatar";
 import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import JoinCommunityModal from "./JoinCommunityModal";
-import { formatMembers } from "@/lib/format";
+import { formatMembers, formatUnread } from "@/lib/format";
+import { useUnreadSummary } from "@/hooks/messages/useUnreadSummary";
+import { useUnreadSocket } from "@/hooks/messages/useUnreadSocket";
+import { useDirectSocket } from "@/hooks/direct/useDirectSocket";
 import type { ChatCommunity, ChatRoom } from "@/lib/chat";
 
 interface IProps {
@@ -40,6 +43,13 @@ const Sidebar = ({
   const [isSwitcherOpen, setSwitcherOpen] = useState(false);
   const [isJoinOpen, setJoinOpen] = useState(false);
   const { push } = useRouter();
+  useDirectSocket();
+  useUnreadSocket();
+  const unread = useUnreadSummary(activeRoomId);
+  const unreadElsewhere = communities.reduce(
+    (sum, item) => (item.id === community.id ? sum : sum + (unread.communities[item.id] ?? 0)),
+    0,
+  );
 
   return (
     <aside className={css.sidebar} data-open={isOpen} data-collapsed={isCollapsed}>
@@ -64,6 +74,7 @@ const Sidebar = ({
             <span className={css.switcherName}>{community.name}</span>
             <span className={css.switcherMeta}>{formatMembers(community.members)}</span>
           </span>
+          {unreadElsewhere > 0 && <span className={css.badge}>{formatUnread(unreadElsewhere)}</span>}
           <ChevronDown size={16} className={css.chevron} data-open={isSwitcherOpen} />
         </button>
 
@@ -89,6 +100,9 @@ const Sidebar = ({
                     <span className={css.switcherItemName}>{item.name}</span>
                     {item.id === community.id && (
                       <span className={css.activeTag}>Активно</span>
+                    )}
+                    {(unread.communities[item.id] ?? 0) > 0 && (
+                      <span className={css.badge}>{formatUnread(unread.communities[item.id] ?? 0)}</span>
                     )}
                   </span>
                   <span className={css.switcherItemMeta}>
@@ -125,9 +139,23 @@ const Sidebar = ({
             >
               <Hash size={16} className={css.roomIcon} />
               <span className={css.roomName}>{room.name}</span>
+              {(unread.rooms[room.id] ?? 0) > 0 && (
+                <span className={css.badge}>{formatUnread(unread.rooms[room.id] ?? 0)}</span>
+              )}
             </button>
           ))}
           {rooms.length === 0 && <span className={css.emptyHint}>Комнат пока нет.</span>}
+        </div>
+      </nav>
+
+      <nav className={css.section}>
+        <span className={css.sectionLabel}>Личные</span>
+        <div className={css.list}>
+          <button type="button" className={css.roomBtn} onClick={() => push("/dm")}>
+            <MessageSquare size={16} className={css.roomIcon} />
+            <span className={css.roomName}>Личные сообщения</span>
+            {unread.direct > 0 && <span className={css.badge}>{formatUnread(unread.direct)}</span>}
+          </button>
         </div>
       </nav>
 

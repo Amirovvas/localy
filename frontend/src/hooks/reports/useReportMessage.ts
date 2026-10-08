@@ -9,7 +9,6 @@ interface IBody {
   comment: string;
 }
 
-// жалоба на сообщение комнаты (POST /messages/:id/report)
 export const useReportMessage = () =>
   useMutation({
     mutationFn: async ({ messageId, reason, comment }: IBody) => {
