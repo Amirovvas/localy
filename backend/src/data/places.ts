@@ -297,4 +297,6 @@ export const PLACES: [string, string, number, number][] = [
   ["ЖК «Asanbai Classic»", "residential", 42.83073, 74.63025],
   ["ЖК «Bereke»", "residential", 42.83723, 74.619],
   ["ЖК «12th City»", "residential", 42.84126, 74.61732],
+  ["INAI", "university", 42.84015, 74.60084],
+  ["Motion Web", "university", 42.8746, 74.5987],
 ];
