@@ -67,7 +67,7 @@ api.interceptors.response.use(
         typeof window !== "undefined" &&
         !isPublicRoute(window.location.pathname)
       ) {
-        window.location.replace("/login");
+        window.location.replace("/welcome");
       }
     }
 

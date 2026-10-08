@@ -12,6 +12,6 @@ export const useLogout = () =>
     onSettled: () => {
       localStorage.removeItem("accessToken");
       disconnectSocket();
-      window.location.href = "/login";
+      window.location.href = "/welcome";
     },
   });

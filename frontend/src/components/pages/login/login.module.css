@@ -501,7 +501,6 @@
 
 @media (max-width: 500px) {
   .formSide {
-    align-items: flex-start;
     padding: 24px 20px;
   }
 
