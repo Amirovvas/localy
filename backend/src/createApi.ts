@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./middleware/errorHandler";
 import authRouter from "./routes/auth.route";
@@ -24,6 +25,7 @@ const createApi = () => {
       credentials: true,
     }),
   );
+  app.use(compression());
   app.use(cookieParser());
   app.use(express.json());
 

@@ -19,37 +19,39 @@ interface IResponse {
   data: RawCommunity;
 }
 
+export const fetchCommunity = async (id: number) => {
+  const res = await api.get<IResponse>(`/communities/${id}`);
+  const c = res.data.data;
+
+  const detail: ChatCommunityDetail = {
+    id: c.id,
+    name: c.name,
+    category: c.category,
+    city: c.city,
+    description: c.description,
+    members: Number(c.members),
+    rooms: c.rooms.map((room) => ({
+      id: room.id,
+      name: room.name,
+      description: room.description,
+    })),
+    events: c.events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      place: event.place,
+      day: new Date(event.starts_at).getDate(),
+      month: formatMonth(event.starts_at),
+      when: formatEventWhen(event.starts_at),
+    })),
+  };
+
+  return detail;
+};
+
 export const useGetCommunity = (id: number | null) =>
   useQuery({
     queryKey: ["communities", id],
     enabled: id !== null,
     placeholderData: keepPreviousData,
-    queryFn: async () => {
-      const res = await api.get<IResponse>(`/communities/${id}`);
-      const c = res.data.data;
-
-      const detail: ChatCommunityDetail = {
-        id: c.id,
-        name: c.name,
-        category: c.category,
-        city: c.city,
-        description: c.description,
-        members: Number(c.members),
-        rooms: c.rooms.map((room) => ({
-          id: room.id,
-          name: room.name,
-          description: room.description,
-        })),
-        events: c.events.map((event) => ({
-          id: event.id,
-          title: event.title,
-          place: event.place,
-          day: new Date(event.starts_at).getDate(),
-          month: formatMonth(event.starts_at),
-          when: formatEventWhen(event.starts_at),
-        })),
-      };
-
-      return detail;
-    },
+    queryFn: () => fetchCommunity(id as number),
   });

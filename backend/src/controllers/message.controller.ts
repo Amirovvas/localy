@@ -4,6 +4,7 @@ import {
   createMessageService,
   deleteMessageService,
   editMessageService,
+  forwardMessageService,
   getReadStateService,
   listMessagesService,
   listPinnedMessagesService,
@@ -50,6 +51,20 @@ export const createMessageController = async (
     const userId = (req as any).user.id;
     const message = await createMessageService({ ...req.body, userId });
     res.status(201).json({ message: "message sent", data: message });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forwardMessageController = async (
+  req: Request<{ id: string }>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = (req as any).user.id;
+    const message = await forwardMessageService(Number(req.params.id), req.body.roomId, userId);
+    res.status(201).json({ message: "message forwarded", data: message });
   } catch (error) {
     next(error);
   }

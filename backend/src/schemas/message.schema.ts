@@ -13,6 +13,10 @@ export const createMessageSchema = z
     path: ["text"],
   });
 
+export const forwardMessageSchema = z.object({
+  roomId: z.number().int().positive(),
+});
+
 export const editMessageSchema = z.object({
   text: z.string().trim().min(1, "Сообщение не может быть пустым").max(4000, "Сообщение слишком длинное"),
 });

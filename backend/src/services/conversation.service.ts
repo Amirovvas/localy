@@ -3,11 +3,13 @@ import { getIO, userChannel } from "../plugins/socket";
 import { apiErrors } from "../utils/apiErrors";
 import { assertNoBannedWords } from "../utils/bannedWords";
 import { assertMessageRate } from "../utils/rateLimit";
+import { assertOwnAttachment } from "../plugins/storage";
 
 interface IStartBody {
   userId: number;
   anonId: number;
   text: string;
+  attachment?: string;
   communityId?: number;
 }
 
@@ -38,7 +40,7 @@ export const listConversationsService = async (userId: number) => {
     select
       c.id, c.status, c.initiator_id = $1 as is_initiator, (c.blocked_by = $1) as blocked_by_me,
       o.anon_id as other_anon_id, com.name as community_name,
-      lm.text as last_text, lm.created_at as last_at, (lm.sender_id = $1) as last_mine,
+      coalesce(nullif(lm.text, ''), case when lm.attachment is not null then '📷 Фото' end) as last_text, lm.created_at as last_at, (lm.sender_id = $1) as last_mine,
       c.created_at,
       (
         select count(*)::int from direct_messages dm
@@ -49,7 +51,7 @@ export const listConversationsService = async (userId: number) => {
     join users o on o.id = case when c.user_a = $1 then c.user_b else c.user_a end
     left join communities com on com.id = c.community_id
     left join lateral (
-      select text, created_at, sender_id from direct_messages
+      select text, attachment, created_at, sender_id from direct_messages
       where conversation_id = c.id order by id desc limit 1
     ) lm on true
     where (c.user_a = $1 or c.user_b = $1)
@@ -65,6 +67,7 @@ export const listConversationsService = async (userId: number) => {
 export const startConversationService = async (body: IStartBody) => {
   assertMessageRate(body.userId);
   assertNoBannedWords(body.text);
+  assertOwnAttachment(body.attachment);
 
   const targetResult = await pool.query(
     `select id, allow_dm, is_blocked from users where anon_id = $1`,
@@ -130,8 +133,8 @@ export const startConversationService = async (body: IStartBody) => {
   }
 
   await pool.query(
-    `insert into direct_messages (conversation_id, sender_id, text) values ($1, $2, $3)`,
-    [conversation.id, body.userId, body.text],
+    `insert into direct_messages (conversation_id, sender_id, text, attachment) values ($1, $2, $3, $4)`,
+    [conversation.id, body.userId, body.text, body.attachment ?? null],
   );
 
   notifyUpdate(conversation);
@@ -142,11 +145,17 @@ export const listDirectMessagesService = async (conversationId: number, userId: 
   await getConversation(conversationId, userId);
   const result = await pool.query(
     `
-    select id, text, created_at, (sender_id = $2) as mine
+    select
+      dm.id, dm.text, dm.attachment, dm.created_at, (dm.sender_id = $2) as mine,
+      (
+        dm.sender_id = $2
+        and dm.id <= case when c.user_a = $2 then c.user_b_read_id else c.user_a_read_id end
+      ) as read
     from (
       select * from direct_messages where conversation_id = $1 order by id desc limit 200
-    ) recent
-    order by id asc
+    ) dm
+    join conversations c on c.id = $1
+    order by dm.id asc
     `,
     [conversationId, userId],
   );
@@ -157,9 +166,11 @@ export const sendDirectMessageService = async (
   conversationId: number,
   userId: number,
   text: string,
+  attachment?: string,
 ) => {
   assertMessageRate(userId);
   assertNoBannedWords(text);
+  assertOwnAttachment(attachment);
 
   const conversation = await getConversation(conversationId, userId);
 
@@ -180,26 +191,27 @@ export const sendDirectMessageService = async (
 
   const inserted = await pool.query(
     `
-    insert into direct_messages (conversation_id, sender_id, text)
-    values ($1, $2, $3)
-    returning id, text, created_at
+    insert into direct_messages (conversation_id, sender_id, text, attachment)
+    values ($1, $2, $3, $4)
+    returning id, text, attachment, created_at
     `,
-    [conversationId, userId, text],
+    [conversationId, userId, text, attachment ?? null],
   );
   await pool.query(`update conversations set updated_at = now() where id = $1`, [conversationId]);
 
   const message = inserted.rows[0];
   const io = getIO();
   if (io) {
-    io.to(userChannel(userId)).emit("dm:message", { conversationId, ...message, mine: true });
+    io.to(userChannel(userId)).emit("dm:message", { conversationId, ...message, mine: true, read: false });
     io.to(userChannel(otherUserId(conversation, userId))).emit("dm:message", {
       conversationId,
       ...message,
       mine: false,
+      read: false,
     });
   }
 
-  return { ...message, mine: true };
+  return { ...message, mine: true, read: false };
 };
 
 export const acceptConversationService = async (conversationId: number, userId: number) => {
@@ -251,7 +263,7 @@ export const unblockConversationService = async (conversationId: number, userId:
 };
 
 export const markConversationReadService = async (conversationId: number, userId: number) => {
-  await getConversation(conversationId, userId);
+  const conversation = await getConversation(conversationId, userId);
   await pool.query(
     `
     update conversations c set
@@ -264,4 +276,8 @@ export const markConversationReadService = async (conversationId: number, userId
     `,
     [conversationId, userId],
   );
+
+  getIO()
+    ?.to(userChannel(otherUserId(conversation, userId)))
+    .emit("dm:read", { conversationId });
 };

@@ -2,10 +2,23 @@ import { Pool } from "pg";
 import { generateUniqueAnonId } from "../utils/anonId";
 import { PLACES } from "../data/places";
 
+const WARM_CONNECTIONS = 4;
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+  max: 10,
+  keepAlive: true,
+  idleTimeoutMillis: 120_000,
 });
+
+const warmUpPool = () =>
+  Promise.all(Array.from({ length: WARM_CONNECTIONS }, () => pool.query("select 1"))).catch(
+    () => undefined,
+  );
+
+warmUpPool();
+setInterval(warmUpPool, 20_000).unref();
 
 pool.connect().then(async () => {
   console.log(`DB connected`);
@@ -133,6 +146,7 @@ pool.connect().then(async () => {
   await pool.query(`
     alter table messages add column if not exists pinned_at timestamptz
   `);
+  await pool.query(`alter table messages add column if not exists forwarded_from text`);
   await pool.query(`
     create index if not exists messages_room_id_pinned_at_idx
       on messages(room_id, pinned_at) where pinned_at is not null
@@ -261,6 +275,7 @@ pool.connect().then(async () => {
       created_at timestamptz not null default now()
     )
   `);
+  await pool.query(`alter table direct_messages add column if not exists attachment text`);
   await pool.query(`
     create index if not exists direct_messages_conversation_id_id_idx
       on direct_messages(conversation_id, id)

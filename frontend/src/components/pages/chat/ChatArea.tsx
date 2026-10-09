@@ -5,7 +5,9 @@ import {
   CalendarPlus,
   ChevronDown,
   CornerUpLeft,
+  Camera,
   Flag,
+  Forward,
   Mail,
   Info,
   Menu,
@@ -23,10 +25,11 @@ import {
   X,
 } from "lucide-react";
 import css from "./chatArea.module.css";
-import { Avatar } from "@/components/layout/Avatar";
 import { CommunityIcon } from "@/components/layout/CommunityIcon";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import StartDirectModal from "./StartDirectModal";
+import ForwardModal from "./ForwardModal";
+import ImageViewer from "./ImageViewer";
 import EmptyRoom from "./EmptyRoom";
 import { useGetMessages } from "@/hooks/messages/useGetMessages";
 import { useSendMessage } from "@/hooks/messages/useSendMessage";
@@ -43,7 +46,6 @@ import { formatUnread } from "@/lib/format";
 import { useMarkRoomRead } from "@/hooks/messages/useMarkRoomRead";
 import {
   ACCEPTED_IMAGE_TYPES,
-  MAX_IMAGE_SIZE,
   useUploadImage,
 } from "@/hooks/uploads/useUploadImage";
 import { useReportMessage, type ReportReason } from "@/hooks/reports/useReportMessage";
@@ -55,6 +57,7 @@ import type { ChatCommunityDetail, ChatMessage, ChatRoom } from "@/lib/chat";
 import { REACTION_EMOJIS } from "@/lib/chat";
 import { formatMembers } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { ImageTooLargeError, MAX_ORIGINAL_SIZE } from "@/lib/compressImage";
 
 const EmojiPickerPanel = dynamic(() => import("./EmojiPickerPanel"), {
   ssr: false,
@@ -105,6 +108,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   const [attachError, setAttachError] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const uploadImage = useUploadImage();
   const [emojiOpen, setEmojiOpen] = useState(false);
   const emojiWrapRef = useRef<HTMLDivElement>(null);
@@ -120,6 +124,8 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
   const toggleReaction = useToggleReaction();
   const [deleteTarget, setDeleteTarget] = useState<ChatMessage | null>(null);
   const [directTarget, setDirectTarget] = useState<number | null>(null);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const [forwardTarget, setForwardTarget] = useState<ChatMessage | null>(null);
   const deleteMessage = useDeleteMessage();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState("");
@@ -281,8 +287,8 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
       setAttachError("Разрешены только JPG, PNG и WebP");
       return;
     }
-    if (file.size > MAX_IMAGE_SIZE) {
-      setAttachError("Файл слишком большой (максимум 5 МБ)");
+    if (file.size > MAX_ORIGINAL_SIZE) {
+      setAttachError("Файл слишком большой (максимум 25 МБ)");
       return;
     }
 
@@ -290,7 +296,11 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
     uploadImage.mutate(file, {
       onSuccess: (url) => setAttachmentUrl(url),
       onError: (error) => {
-        setAttachError(getApiErrorMessage(error) ?? "Не удалось загрузить фото");
+        setAttachError(
+          error instanceof ImageTooLargeError
+            ? error.message
+            : (getApiErrorMessage(error) ?? "Не удалось загрузить фото"),
+        );
       },
     });
   };
@@ -619,7 +629,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           const reactions = message.reactions ?? [];
           const isOwn = message.authorId === currentUserAnonId;
           return (
-            <div key={message.id}>
+            <div key={message.id} className={css.row}>
               {unreadDividerId === message.id && (
                 <div className={css.unreadDivider}>
                   <span>Непрочитанные сообщения</span>
@@ -633,7 +643,6 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                 } ${highlightedId === message.id ? css.highlighted : ""}`}
                 onMouseLeave={() => setPickerFor((open) => (open === message.id ? null : open))}
               >
-                <Avatar size={34} className={css.avatar} />
 
                 <div className={css.body}>
                   <div className={css.head}>
@@ -645,6 +654,13 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                       <span className={css.announceTag}>Официально</span>
                     )}
                   </div>
+
+                  {message.forwardedFrom && (
+                    <span className={css.forwardedTag}>
+                      <Forward size={11} />
+                      Переслано из {message.forwardedFrom}
+                    </span>
+                  )}
 
                   {message.replyTo && (
                     <button
@@ -661,11 +677,11 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                   )}
 
                   {message.attachment && (
-                    <a
-                      href={message.attachment}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <button
+                      type="button"
                       className={css.imageLink}
+                      onClick={() => setViewerSrc(message.attachment ?? null)}
+                      aria-label="Открыть фото"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
@@ -674,7 +690,7 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                         className={css.messageImage}
                         loading="lazy"
                       />
-                    </a>
+                    </button>
                   )}
 
                   {editingId === message.id ? (
@@ -726,6 +742,14 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                       ))}
                     </div>
                   )}
+
+                  {isOwn && (
+                    <span className={css.ownMeta}>
+                      {message.isEdited && <span className={css.editedTag}>изменено</span>}
+                      {message.isPinned && <Pin size={11} className={css.pinnedTag} />}
+                      <span className={css.ownTime}>{message.time}</span>
+                    </span>
+                  )}
                 </div>
 
                 <div
@@ -748,6 +772,14 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
                     onClick={() => startReply(message)}
                   >
                     <Reply size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className={css.hoverBtn}
+                    title="Переслать"
+                    onClick={() => setForwardTarget(message)}
+                  >
+                    <Forward size={14} />
                   </button>
                   <button
                     type="button"
@@ -901,6 +933,14 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           className={css.fileInput}
           onChange={handleFileChange}
         />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES.join(",")}
+          capture="environment"
+          className={css.fileInput}
+          onChange={handleFileChange}
+        />
         <button
           type="button"
           className={css.attachBtn}
@@ -910,6 +950,17 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
         >
           <Paperclip size={18} />
         </button>
+        {isMobile && (
+          <button
+            type="button"
+            className={css.attachBtn}
+            aria-label="Сфотографировать"
+            disabled={uploadImage.isPending}
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera size={18} />
+          </button>
+        )}
 
         <div className={css.inputWrap} ref={emojiWrapRef}>
           <input
@@ -948,6 +999,23 @@ const ChatArea = ({ community, room, currentUserAnonId, onOpenSidebar, onOpenInf
           <Send size={16} />
         </button>
       </form>
+
+      {forwardTarget && (
+        <ForwardModal
+          message={forwardTarget}
+          currentCommunityId={community.id}
+          onClose={() => setForwardTarget(null)}
+        />
+      )}
+
+      {viewerSrc && (
+        <ImageViewer
+          photos={messages.flatMap((message) => (message.attachment ? [message.attachment] : []))}
+          src={viewerSrc}
+          onChange={setViewerSrc}
+          onClose={() => setViewerSrc(null)}
+        />
+      )}
 
       {directTarget !== null && (
         <StartDirectModal

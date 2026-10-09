@@ -171,20 +171,17 @@ export const leaveCommunityService = async (communityId: number, userId: number)
 };
 
 export const getCommunityService = async (id: number, userId: number) => {
-  const communityResult = await pool.query(
-    `
-    select
-      c.id, c.name, c.category, c.city, c.description, c.created_at,
-      (select count(*) from community_members cm where cm.community_id = c.id) as members
-    from communities c
-    where c.id = $1
-    `,
-    [id],
-  );
-  const community = communityResult.rows[0];
-  if (!community) throw apiErrors.notFound("Сообщество не найдено");
-
-  const [rooms, events] = await Promise.all([
+  const [communityResult, rooms, events] = await Promise.all([
+    pool.query(
+      `
+      select
+        c.id, c.name, c.category, c.city, c.description, c.created_at,
+        (select count(*) from community_members cm where cm.community_id = c.id) as members
+      from communities c
+      where c.id = $1
+      `,
+      [id],
+    ),
     pool.query(
       `select id, name, description from rooms where community_id = $1 order by position, name`,
       [id],
@@ -197,6 +194,9 @@ export const getCommunityService = async (id: number, userId: number) => {
       [id, userId],
     ),
   ]);
+
+  const community = communityResult.rows[0];
+  if (!community) throw apiErrors.notFound("Сообщество не найдено");
 
   return {
     ...community,

@@ -22,7 +22,14 @@ export const useDirectSocket = () => {
           if (prev.some((existing) => existing.id === payload.id)) return prev;
           return [
             ...prev,
-            { id: payload.id, text: payload.text, created_at: payload.created_at, mine: payload.mine },
+            {
+              id: payload.id,
+              text: payload.text,
+              attachment: payload.attachment ?? null,
+              created_at: payload.created_at,
+              mine: payload.mine,
+              read: payload.read ?? false,
+            },
           ];
         },
       );
@@ -33,11 +40,19 @@ export const useDirectSocket = () => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     };
 
+    const handleRead = (payload: { conversationId: number }) => {
+      queryClient.invalidateQueries({
+        queryKey: ["conversations", payload.conversationId, "messages"],
+      });
+    };
+
     socket.on("dm:message", handleMessage);
+    socket.on("dm:read", handleRead);
     socket.on("dm:update", handleUpdate);
 
     return () => {
       socket.off("dm:message", handleMessage);
+      socket.off("dm:read", handleRead);
       socket.off("dm:update", handleUpdate);
     };
   }, [hasToken, queryClient]);

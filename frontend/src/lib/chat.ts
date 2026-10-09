@@ -49,6 +49,7 @@ export interface ChatMessage {
   isPinned?: boolean;
   reactions?: ChatReaction[];
   replyTo?: ChatReplyPreview;
+  forwardedFrom?: string | null;
 }
 
 export interface ChatCommunityDetail extends ChatCommunity {

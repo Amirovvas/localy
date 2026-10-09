@@ -48,6 +48,7 @@ export const sendDirectMessageController = async (req: IdRequest, res: Response,
       Number(req.params.id),
       currentUserId(req),
       req.body.text,
+      req.body.attachment,
     );
     res.status(201).json({ message: "message sent", data });
   } catch (error) {

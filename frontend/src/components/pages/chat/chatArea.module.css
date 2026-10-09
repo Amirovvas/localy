@@ -486,7 +486,7 @@
 
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
 }
 
 .emptyState {
@@ -519,59 +519,50 @@
   background: var(--loc-accent-soft);
 }
 
+.row {
+  display: flex;
+  flex-direction: column;
+}
+
 .message {
   position: relative;
 
   display: flex;
-  gap: 12px;
+  align-self: flex-start;
 
-  padding: 6px 8px;
-  margin: -6px -8px;
-
-  border-radius: var(--loc-radius-md);
-}
-
-.message:hover {
-  background: var(--loc-surface-soft);
-}
-
-.message.announcement {
-  background: var(--loc-accent-soft);
-  border: 1px solid #e0e7ff;
+  max-width: 78%;
 }
 
 .message.own {
-  flex-direction: row-reverse;
-}
-
-.message.own .body {
-  flex: 0 1 auto;
-  max-width: 72%;
-}
-
-@media (max-width: 640px) {
-  .message.own .body {
-    max-width: 85%;
-  }
-}
-
-.message.own .hoverActions {
-  right: auto;
-  left: 8px;
-}
-
-.message.own .reactionPicker {
-  right: auto;
-  left: 0;
-}
-
-.avatar {
-  margin-top: 1px;
+  align-self: flex-end;
 }
 
 .body {
   min-width: 0;
-  flex: 1;
+  padding: 10px 14px;
+
+  border: 1px solid transparent;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--loc-surface-soft);
+
+  transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.15s ease;
+}
+
+.message:hover .body {
+  border-color: var(--loc-border);
+}
+
+.message.own .body {
+  border-radius: 14px 14px 4px 14px;
+  background: var(--loc-accent-soft);
+}
+
+.message.own .author {
+  display: none;
+}
+
+.message.announcement .body {
+  border-color: var(--loc-accent);
 }
 
 .head {
@@ -581,14 +572,20 @@
 }
 
 .author {
-  color: var(--loc-text);
-  font-size: 13px;
+  color: var(--loc-accent);
+  font-size: 12px;
   font-weight: 700;
 }
 
 .time {
   color: var(--loc-text-tertiary);
   font-size: 11px;
+}
+
+@media (max-width: 640px) {
+  .message {
+    max-width: 90%;
+  }
 }
 
 .announceTag {
@@ -1120,9 +1117,8 @@
   color: var(--loc-text);
 }
 
-.message.highlighted {
-  background: #2a2a55;
-  transition: background 0.3s ease;
+.message.highlighted .body {
+  box-shadow: 0 0 0 2px var(--loc-accent);
 }
 
 .eventForm {
@@ -1302,6 +1298,12 @@
 .imageLink {
   display: inline-block;
   margin: 4px 0;
+  padding: 0;
+
+  border: none;
+  background: transparent;
+
+  cursor: zoom-in;
 }
 
 .messageImage {
@@ -1560,4 +1562,64 @@
 
   font-size: 10px;
   font-weight: 700;
+}
+
+.forwardedTag {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+
+  margin-bottom: 4px;
+
+  color: var(--loc-text-tertiary);
+
+  font-size: 11.5px;
+  font-style: italic;
+}
+
+.message .hoverActions {
+  top: -22px;
+  right: auto;
+  left: 8px;
+}
+
+.message.own .hoverActions {
+  right: 8px;
+  left: auto;
+}
+
+.message .reactionPicker {
+  right: auto;
+  left: 0;
+}
+
+.message.own .reactionPicker {
+  right: 0;
+  left: auto;
+}
+
+.message.own .replyQuote {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.message.own .head .time,
+.message.own .head .editedTag,
+.message.own .head .pinnedTag {
+  display: none;
+}
+
+.ownMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+
+  margin-top: 2px;
+}
+
+.ownTime {
+  color: rgba(255, 255, 255, 0.55);
+
+  font-size: 11px;
 }

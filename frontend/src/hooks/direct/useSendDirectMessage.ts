@@ -6,8 +6,8 @@ export const useSendDirectMessage = (conversationId: number) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (text: string) => {
-      const res = await api.post(`/conversations/${conversationId}/messages`, { text });
+    mutationFn: async (body: { text: string; attachment?: string }) => {
+      const res = await api.post(`/conversations/${conversationId}/messages`, body);
       return res.data.data as DirectMessage;
     },
     onSuccess: (message) => {

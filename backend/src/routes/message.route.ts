@@ -4,6 +4,7 @@ import {
   createMessageController,
   deleteMessageController,
   editMessageController,
+  forwardMessageController,
   getMessagesController,
   getPinnedMessagesController,
   getReadStateController,
@@ -14,7 +15,7 @@ import {
   togglePinMessageController,
 } from "../controllers/message.controller";
 import { validateSchema } from "../middleware/schema";
-import { createMessageSchema, editMessageSchema } from "../schemas/message.schema";
+import { createMessageSchema, editMessageSchema, forwardMessageSchema } from "../schemas/message.schema";
 import { toggleReactionSchema } from "../schemas/reaction.schema";
 import { createReportSchema } from "../schemas/report.schema";
 import { reportMessageController } from "../controllers/report.controller";
@@ -44,6 +45,7 @@ router.post(
   toggleMessageReactionController,
 );
 router.post("/:id/pin", authMiddleware, togglePinMessageController);
+router.post("/:id/forward", authMiddleware, validateSchema(forwardMessageSchema), forwardMessageController);
 
 router.post(
   "/:id/report",

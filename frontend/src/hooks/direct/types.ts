@@ -17,6 +17,8 @@ export interface Conversation {
 export interface DirectMessage {
   id: number;
   text: string;
+  attachment: string | null;
   created_at: string;
   mine: boolean;
+  read: boolean;
 }

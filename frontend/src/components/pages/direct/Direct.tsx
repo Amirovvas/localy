@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MessageSquare } from "lucide-react";
 import css from "./direct.module.css";
@@ -13,12 +13,11 @@ const Direct = () => {
   const { push } = useRouter();
   useDirectSocket();
   const { data: conversations = [], isLoading } = useConversations();
-  const [activeId, setActiveId] = useState<number | null>(null);
-
-  useEffect(() => {
-    const fromUrl = Number(new URLSearchParams(window.location.search).get("c"));
-    if (fromUrl) setActiveId(fromUrl);
-  }, []);
+  const [activeId, setActiveId] = useState<number | null>(() =>
+    typeof window === "undefined"
+      ? null
+      : Number(new URLSearchParams(window.location.search).get("c")) || null,
+  );
 
   const active = conversations.find((conversation) => conversation.id === activeId) ?? null;
 

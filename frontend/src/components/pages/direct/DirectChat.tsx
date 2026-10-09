@@ -1,15 +1,33 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Ban, Send, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Ban,
+  Camera,
+  Check,
+  CheckCheck,
+  Loader2,
+  Paperclip,
+  Send,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 import css from "./direct.module.css";
 import { Avatar } from "@/components/layout/Avatar";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import ImageViewer from "@/components/pages/chat/ImageViewer";
 import type { Conversation } from "@/hooks/direct/types";
 import { useConversationAction } from "@/hooks/direct/useConversationAction";
 import { useDirectMessages } from "@/hooks/direct/useDirectMessages";
 import { useMarkConversationRead } from "@/hooks/direct/useMarkConversationRead";
 import { useSendDirectMessage } from "@/hooks/direct/useSendDirectMessage";
+import {
+  ACCEPTED_IMAGE_TYPES,
+  useUploadImage,
+} from "@/hooks/uploads/useUploadImage";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { getApiErrorMessage } from "@/lib/apiError";
+import { ImageTooLargeError, MAX_ORIGINAL_SIZE } from "@/lib/compressImage";
 import { formatMessageTime } from "@/lib/format";
 
 interface IProps {
@@ -26,7 +44,13 @@ const DirectChat = ({ conversation, onBack }: IProps) => {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [blockOpen, setBlockOpen] = useState(false);
+  const [attachmentUrl, setAttachmentUrl] = useState<string | null>(null);
+  const [viewerSrc, setViewerSrc] = useState<string | null>(null);
+  const uploadImage = useUploadImage();
   const listRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const isRequestForMe = conversation.status === "pending" && !conversation.is_initiator;
   const isWaiting = conversation.status === "pending" && conversation.is_initiator;
@@ -41,19 +65,51 @@ const DirectChat = ({ conversation, onBack }: IProps) => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages.length]);
 
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      setError("Разрешены только JPG, PNG и WebP");
+      return;
+    }
+    if (file.size > MAX_ORIGINAL_SIZE) {
+      setError("Файл слишком большой (максимум 25 МБ)");
+      return;
+    }
+
+    setError(null);
+    uploadImage.mutate(file, {
+      onSuccess: (url) => setAttachmentUrl(url),
+      onError: (err) =>
+        setError(
+          err instanceof ImageTooLargeError
+            ? err.message
+            : (getApiErrorMessage(err) ?? "Не удалось загрузить фото"),
+        ),
+    });
+  };
+
   const handleSend = (event: React.FormEvent) => {
     event.preventDefault();
     const text = draft.trim();
-    if (!text || sendMessage.isPending) return;
+    const attachment = attachmentUrl;
+    if ((!text && !attachment) || sendMessage.isPending || uploadImage.isPending) return;
 
     setError(null);
     setDraft("");
-    sendMessage.mutate(text, {
-      onError: (err) => {
-        setDraft((current) => current || text);
-        setError(getApiErrorMessage(err) ?? "Не удалось отправить сообщение");
+    setAttachmentUrl(null);
+    sendMessage.mutate(
+      { text, attachment: attachment ?? undefined },
+      {
+        onError: (err) => {
+          setDraft((current) => current || text);
+          setAttachmentUrl((current) => current ?? attachment);
+          setError(getApiErrorMessage(err) ?? "Не удалось отправить сообщение");
+        },
       },
-    });
+    );
   };
 
   const runAction = (name: "accept" | "decline" | "block" | "unblock") => {
@@ -148,16 +204,97 @@ const DirectChat = ({ conversation, onBack }: IProps) => {
         {!isLoading && messages.length === 0 && <p className={css.hint}>Сообщений пока нет.</p>}
         {messages.map((message) => (
           <div key={message.id} className={css.bubble} data-mine={message.mine}>
-            <span className={css.bubbleText}>{message.text}</span>
-            <span className={css.bubbleTime}>{formatMessageTime(message.created_at)}</span>
+            {message.attachment && (
+              <button
+                type="button"
+                className={css.imageBtn}
+                onClick={() => setViewerSrc(message.attachment)}
+                aria-label="Открыть фото"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={message.attachment} alt="Фото из диалога" className={css.bubbleImage} loading="lazy" />
+              </button>
+            )}
+            {message.text && <span className={css.bubbleText}>{message.text}</span>}
+            <span className={css.bubbleTime}>
+              {formatMessageTime(message.created_at)}
+              {message.mine &&
+                (message.read ? (
+                  <CheckCheck size={15} className={css.readIcon} aria-label="Прочитано" />
+                ) : (
+                  <Check size={15} className={css.sentIcon} aria-label="Отправлено" />
+                ))}
+            </span>
           </div>
         ))}
       </div>
 
       {error && <p className={css.error}>{error}</p>}
 
+      {canWrite && (attachmentUrl || uploadImage.isPending) && (
+        <div className={css.attachPreview}>
+          {uploadImage.isPending ? (
+            <span className={css.attachStatus}>
+              <Loader2 size={14} className={css.spin} />
+              Загрузка фото...
+            </span>
+          ) : (
+            attachmentUrl && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={attachmentUrl} alt="Прикреплённое фото" className={css.attachThumb} />
+                <span className={css.attachStatus}>Фото прикреплено</span>
+                <button
+                  type="button"
+                  className={css.attachRemove}
+                  onClick={() => setAttachmentUrl(null)}
+                  aria-label="Убрать фото"
+                >
+                  <X size={16} />
+                </button>
+              </>
+            )
+          )}
+        </div>
+      )}
+
       {canWrite ? (
         <form className={css.composer} onSubmit={handleSend}>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
+            className={css.fileInput}
+            onChange={handleFileChange}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES.join(",")}
+            capture="environment"
+            className={css.fileInput}
+            onChange={handleFileChange}
+          />
+          <button
+            type="button"
+            className={css.attachBtn}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadImage.isPending}
+            aria-label="Прикрепить фото"
+          >
+            <Paperclip size={18} />
+          </button>
+          {isMobile && (
+            <button
+              type="button"
+              className={css.attachBtn}
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={uploadImage.isPending}
+              aria-label="Сфотографировать"
+            >
+              <Camera size={18} />
+            </button>
+          )}
           <input
             className={css.composerInput}
             value={draft}
@@ -168,7 +305,7 @@ const DirectChat = ({ conversation, onBack }: IProps) => {
           <button
             type="submit"
             className={css.sendBtn}
-            disabled={!draft.trim() || sendMessage.isPending}
+            disabled={(!draft.trim() && !attachmentUrl) || sendMessage.isPending || uploadImage.isPending}
             aria-label="Отправить"
           >
             <Send size={16} />
@@ -179,6 +316,15 @@ const DirectChat = ({ conversation, onBack }: IProps) => {
           <ShieldCheck size={14} />
           Переписка анонимна: собеседник видит только ваш номер.
         </div>
+      )}
+
+      {viewerSrc && (
+        <ImageViewer
+          photos={messages.flatMap((message) => (message.attachment ? [message.attachment] : []))}
+          src={viewerSrc}
+          onChange={setViewerSrc}
+          onClose={() => setViewerSrc(null)}
+        />
       )}
 
       {blockOpen && (

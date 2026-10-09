@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { useAuthStatus } from "@/hooks/auth/useHasToken";
 import { useProfile } from "@/hooks/auth/useProfile";
 import { useGetMyCommunities } from "@/hooks/communities/useGetMyCommunities";
+import { fetchCommunity } from "@/hooks/communities/useGetCommunity";
+import { fetchMessages } from "@/hooks/messages/useGetMessages";
+import { readLandingHint } from "@/lib/landingHint";
 import { isPublicRoute } from "@/lib/routes";
 
 interface IProps {
@@ -21,6 +24,7 @@ const AuthGate = ({ children }: IProps) => {
   const isAuthorized = authStatus === "in";
   const { data: profile, isLoading: profileLoading } = useProfile();
   useGetMyCommunities();
+  const queryClient = useQueryClient();
   const isAdminRoute = pathname === ADMIN_ROUTE || !!pathname?.startsWith(`${ADMIN_ROUTE}/`);
   const mustRedirectToAdmin = isAuthorized && !!profile?.is_admin && !isAdminRoute && !isPublic;
 
@@ -29,6 +33,21 @@ const AuthGate = ({ children }: IProps) => {
       replace("/welcome");
     }
   }, [authStatus, isPublic, replace]);
+
+  useEffect(() => {
+    if (!isAuthorized || pathname !== "/") return;
+    const hint = readLandingHint();
+    if (!hint) return;
+
+    queryClient.prefetchQuery({
+      queryKey: ["communities", hint.communityId],
+      queryFn: () => fetchCommunity(hint.communityId),
+    });
+    queryClient.prefetchQuery({
+      queryKey: ["messages", hint.roomId],
+      queryFn: () => fetchMessages(hint.roomId),
+    });
+  }, [isAuthorized, pathname, queryClient]);
 
   useEffect(() => {
     if (mustRedirectToAdmin) {

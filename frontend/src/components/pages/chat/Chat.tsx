@@ -13,6 +13,7 @@ import { useLeaveCommunity } from "@/hooks/communities/useLeaveCommunity";
 import { useClearChat } from "@/hooks/messages/useClearChat";
 import { useUnreadSummary } from "@/hooks/messages/useUnreadSummary";
 import { formatUnread } from "@/lib/format";
+import { saveLandingHint } from "@/lib/landingHint";
 
 const Chat = () => {
   const { data: profile } = useProfile();
@@ -53,6 +54,13 @@ const Chat = () => {
       return community.rooms[0]?.id ?? null;
     });
   }, [community]);
+
+  useEffect(() => {
+    const firstRoom = community?.rooms[0];
+    if (community && firstRoom && myCommunities?.[0]?.id === community.id) {
+      saveLandingHint({ communityId: community.id, roomId: firstRoom.id });
+    }
+  }, [community, myCommunities]);
 
   const handleSelectCommunity = (id: number) => {
     setCommunityId(id);

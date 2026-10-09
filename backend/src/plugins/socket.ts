@@ -2,7 +2,7 @@ import type { Server as HttpServer } from "http";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { access_secret } from "../utils/generateTokens";
-import { pool } from "./pg";
+import { getUserAccess } from "../utils/userCache";
 
 let io: Server | null = null;
 
@@ -26,13 +26,11 @@ export const initSocket = (server: HttpServer) => {
       if (!token) throw new Error("unauthorized");
 
       const decoded = jwt.verify(token, access_secret) as { id: number };
-      const result = await pool.query(`select anon_id, is_blocked from users where id = $1`, [
-        decoded.id,
-      ]);
-      if (!result.rows[0] || result.rows[0].is_blocked) throw new Error("unauthorized");
+      const access = await getUserAccess(decoded.id);
+      if (!access.exists || access.isBlocked) throw new Error("unauthorized");
 
       socket.data.user = decoded;
-      socket.data.anonId = result.rows[0].anon_id;
+      socket.data.anonId = access.anonId;
       next();
     } catch {
       next(new Error("unauthorized"));

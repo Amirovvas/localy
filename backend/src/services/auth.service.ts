@@ -1,4 +1,5 @@
 import { pool } from "../plugins/pg";
+import { invalidateUserAccess } from "../utils/userCache";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { generateTokens, refresh_secret } from "../utils/generateTokens";
@@ -100,6 +101,7 @@ export const loginService = async (body: ILoginBody) => {
     tokens.refreshToken,
     body.email,
   ]);
+  invalidateUserAccess(user.id);
 
   return {
     user: {
@@ -141,6 +143,7 @@ export const refreshService = async (refreshToken: string) => {
     tokens.refreshToken,
     decoded.email,
   ]);
+  invalidateUserAccess(result.rows[0].id);
 
   return tokens;
 };
@@ -249,5 +252,6 @@ export const getUserService = async (id: number) => {
 export const deleteUserService = async (id: number) => {
   const result = await pool.query(`delete from users where id = $1 returning id`, [id]);
   if (!result.rows[0]) throw apiErrors.notFound("Пользователь не найден");
+  invalidateUserAccess(id);
   return result.rows[0];
 };

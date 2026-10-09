@@ -4,6 +4,7 @@ import { api } from "../api/api";
 interface IBody {
   anonId: number;
   text: string;
+  attachment?: string;
   communityId?: number;
 }
 

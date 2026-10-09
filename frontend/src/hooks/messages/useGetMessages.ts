@@ -11,6 +11,7 @@ export interface RawMessage {
   created_at: string;
   edited_at: string | null;
   pinned_at: string | null;
+  forwarded_from: string | null;
   anon_id: number;
   reply_to_id: number | null;
   reply_text: string | null;
@@ -32,6 +33,7 @@ export const mapMessage = (raw: RawMessage): ChatMessage => ({
   isAnnouncement: raw.is_announcement,
   isEdited: !!raw.edited_at,
   isPinned: !!raw.pinned_at,
+  forwardedFrom: raw.forwarded_from,
   reactions: raw.reactions ?? [],
   replyTo:
     raw.reply_to_id !== null && raw.reply_text !== null && raw.reply_anon_id !== null
@@ -39,14 +41,16 @@ export const mapMessage = (raw: RawMessage): ChatMessage => ({
       : undefined,
 });
 
+export const fetchMessages = async (roomId: number) => {
+  const res = await api.get<IResponse>("/messages", {
+    params: { roomId, limit: 50 },
+  });
+  return res.data.data.map(mapMessage);
+};
+
 export const useGetMessages = (roomId: number | null) =>
   useQuery({
     queryKey: ["messages", roomId],
     enabled: roomId !== null,
-    queryFn: async () => {
-      const res = await api.get<IResponse>("/messages", {
-        params: { roomId, limit: 50 },
-      });
-      return res.data.data.map(mapMessage);
-    },
+    queryFn: () => fetchMessages(roomId as number),
   });

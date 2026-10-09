@@ -13,11 +13,12 @@ interface ICreateBody {
   attachment?: string;
   isAnnouncement?: boolean;
   replyToId?: number;
+  forwardedFrom?: string;
 }
 
 const selectMessage = (userParam: string) => `
   select
-    m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at, u.anon_id,
+    m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at, m.forwarded_from, u.anon_id,
     m.reply_to_id,
     coalesce(nullif(left(rm.text, 200), ''), case when rm.attachment is not null then '📷 Фото' end) as reply_text,
     ru.anon_id as reply_anon_id,
@@ -150,12 +151,12 @@ export const createMessageService = async (body: ICreateBody) => {
     const full = await pool.query(
       `
       with inserted as (
-        insert into messages (room_id, user_id, text, attachment, is_announcement, reply_to_id)
-        values ($1, $2, $3, $4, $5, $6)
+        insert into messages (room_id, user_id, text, attachment, is_announcement, reply_to_id, forwarded_from)
+        values ($1, $2, $3, $4, $5, $6, $7)
         returning *
       )
       select
-        m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at,
+        m.id, m.text, m.attachment, m.is_announcement, m.created_at, m.edited_at, m.pinned_at, m.forwarded_from,
         u.anon_id, m.reply_to_id,
         coalesce(nullif(left(rm.text, 200), ''), case when rm.attachment is not null then '📷 Фото' end) as reply_text,
         ru.anon_id as reply_anon_id,
@@ -172,6 +173,7 @@ export const createMessageService = async (body: ICreateBody) => {
         body.attachment ?? null,
         body.isAnnouncement ?? false,
         body.replyToId ?? null,
+        body.forwardedFrom ?? null,
       ],
     );
     const fullMessage = full.rows[0];
@@ -187,6 +189,40 @@ export const createMessageService = async (body: ICreateBody) => {
     if (error.code === "23503") throw apiErrors.badRequest("Комната не найдена");
     throw error;
   }
+};
+
+export const forwardMessageService = async (messageId: number, roomId: number, userId: number) => {
+  const source = await pool.query(
+    `
+    select m.text, m.attachment, m.forwarded_from, r.name as room_name, c.name as community_name
+    from messages m
+    join rooms r on r.id = m.room_id
+    join communities c on c.id = r.community_id
+    join community_members cm on cm.community_id = c.id and cm.user_id = $2
+    where m.id = $1
+    `,
+    [messageId, userId],
+  );
+  const original = source.rows[0];
+  if (!original) throw apiErrors.notFound("Сообщение не найдено");
+
+  const target = await pool.query(
+    `
+    select r.id from rooms r
+    join community_members cm on cm.community_id = r.community_id and cm.user_id = $2
+    where r.id = $1
+    `,
+    [roomId, userId],
+  );
+  if (!target.rows[0]) throw apiErrors.forbidden("Пересылать можно только в комнаты ваших сообществ");
+
+  return createMessageService({
+    roomId,
+    userId,
+    text: original.text,
+    attachment: original.attachment ?? undefined,
+    forwardedFrom: original.forwarded_from ?? `${original.community_name} · # ${original.room_name}`,
+  });
 };
 
 export const editMessageService = async (id: number, userId: number, text: string) => {

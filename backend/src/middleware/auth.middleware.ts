@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { access_secret } from "../utils/generateTokens";
 import { apiErrors } from "../utils/apiErrors";
-import { pool } from "../plugins/pg";
+import { getUserAccess } from "../utils/userCache";
 
 export const authMiddleware = async (
   req: Request,
@@ -21,13 +21,11 @@ export const authMiddleware = async (
     let decoded = jwt.verify(token, access_secret) as { id: number };
     (req as any).user = decoded;
 
-    const result = await pool.query(`select is_blocked, is_admin from users where id = $1`, [
-      decoded.id,
-    ]);
-    if (result.rows[0]?.is_blocked) {
+    const access = await getUserAccess(decoded.id);
+    if (access.isBlocked) {
       return res.status(403).json({ message: "Аккаунт заблокирован" });
     }
-    (req as any).user.isAdmin = Boolean(result.rows[0]?.is_admin);
+    (req as any).user.isAdmin = access.isAdmin;
 
     next();
   } catch (error: any) {

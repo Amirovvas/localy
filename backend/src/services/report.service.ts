@@ -1,4 +1,5 @@
 import { pool } from "../plugins/pg";
+import { invalidateUserAccess } from "../utils/userCache";
 import { apiErrors } from "../utils/apiErrors";
 
 interface IReportBody {
@@ -183,6 +184,7 @@ export const blockReportAuthorService = async (id: number) => {
   }
 
   await pool.query(`update users set is_blocked = true where id = $1`, [report.reported_user_id]);
+  invalidateUserAccess(report.reported_user_id);
   await addReportEvent(id, `Пользователь Аноним #${report.author_anon_id} заблокирован`);
   return getReportRow(id);
 };
@@ -194,6 +196,7 @@ export const unblockReportAuthorService = async (id: number) => {
   }
 
   await pool.query(`update users set is_blocked = false where id = $1`, [report.reported_user_id]);
+  invalidateUserAccess(report.reported_user_id);
   await addReportEvent(id, `Пользователь Аноним #${report.author_anon_id} разблокирован`);
   return getReportRow(id);
 };
