@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { generateUniqueAnonId } from "../utils/anonId";
 import { PLACES } from "../data/places";
+import { REGION_PLACES } from "../data/regionPlaces";
 
 const WARM_CONNECTIONS = 4;
 
@@ -414,6 +415,29 @@ pool.connect().then(async () => {
     on conflict (name) do nothing
     `,
     [PLACES.map((p) => p[0]), PLACES.map((p) => p[1]), PLACES.map((p) => p[2]), PLACES.map((p) => p[3])],
+  );
+
+  await pool.query(
+    `
+    insert into communities (name, category, city, description, lat, lng)
+    select p.name, p.category, p.city,
+      case p.category
+        when 'school' then 'Сообщество учеников, родителей и учителей — ' || p.name || '.'
+        when 'university' then 'Сообщество студентов и сотрудников — ' || p.name || '.'
+        when 'district' then 'Сообщество жителей — ' || p.name || '.'
+        else 'Сообщество жильцов — ' || p.name || '.'
+      end,
+      p.lat, p.lng
+    from unnest($1::text[], $2::text[], $3::text[], $4::float8[], $5::float8[]) as p(name, category, city, lat, lng)
+    on conflict (name) do nothing
+    `,
+    [
+      REGION_PLACES.map((p) => p[0]),
+      REGION_PLACES.map((p) => p[1]),
+      REGION_PLACES.map((p) => p[2]),
+      REGION_PLACES.map((p) => p[3]),
+      REGION_PLACES.map((p) => p[4]),
+    ],
   );
 
   await pool.query(`
